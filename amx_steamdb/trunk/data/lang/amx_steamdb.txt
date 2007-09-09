@@ -1,0 +1,26 @@
+﻿[cn]
+CMD_HELP = "- 从SteamID的数据库中显示玩家的名字"
+
+[da]
+CMD_HELP = "- viser spillerens navne fra SteamID databasen"
+
+[de]
+CMD_HELP = "- zeigt die Spielernamen aus der SteamID-Datenbank an"
+
+[en]
+CMD_HELP = "- shows players' nicks from SteamID database"
+
+[fr]
+CMD_HELP = "- montre les noms des joueurs depuis la base de donnees des SteamID"
+
+[hu]
+CMD_HELP = "- megmutatja a jatekosok neveit a STEAMID adatbazisbol."
+
+[nl]
+CMD_HELP = "- toont de spelernamen uit de SteamID databank"
+
+[pl]
+CMD_HELP = "- wyswietla nicki graczy z bazy SteamID-ow"
+
+[sv]
+CMD_HELP = "- visar spelares smeknamn fran SteamID databas"

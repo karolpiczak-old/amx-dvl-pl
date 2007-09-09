@@ -1,0 +1,29 @@
+﻿[da]
+STANDARD_PASS = Standard kodeord sat (for faa spillere)
+
+[de]
+STANDARD_PASS = Standardpasswort eingestellt (zu wenig Spieler)
+
+[en]
+STANDARD_PASS = Standard password set (too few players)
+
+[es]
+STANDARD_PASS = Contrasenia Predeterminada Establecida (pocos jugadores)
+
+[fr]
+STANDARD_PASS = Standard mot de passe entre (trop peu de joueurs)
+
+[hk]
+STANDARD_PASS = 標準密碼已設定 (太少玩家)
+
+[hu]
+STANDARD_PASS = Alap jelszo beallitva (Tul keves jatekos)
+
+[nl]
+STANDARD_PASS = Standaard wachtwoord ingesteld (te weinig spelers)
+
+[pl]
+STANDARD_PASS = Ustawiono standardowe haslo (zbyt mala ilosc graczy)
+
+[sv]
+STANDARD_PASS = Standard l'o'senord satt (f'o'r lite spelare)
