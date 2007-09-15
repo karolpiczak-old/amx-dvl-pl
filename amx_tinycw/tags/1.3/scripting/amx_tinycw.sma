@@ -139,7 +139,7 @@
 new g_pluginVersion[] = "1.3";
 
 /**
- * Plugin initialization:
+ * Plugin initialisation:
  * - registers plugin
  * - loads dictionary file
  * - depending  on compile settings, hooks to  'say /pause'  and/or loops  pass

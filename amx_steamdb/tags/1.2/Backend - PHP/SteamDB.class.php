@@ -155,7 +155,7 @@ class SteamDBLine {
 
 //:--- Methods ----------------------------------------------------------------
    /**
-    * Constructor. Initializes class instance with SteamID & username.
+    * Constructor. Initialises class instance with SteamID & username.
     *
     * @param string $steamID User's SteamID
     * @param string $username User's name/nick
@@ -212,7 +212,7 @@ class SteamDBLine {
 class SteamDBAux {
 //:--- Methods ----------------------------------------------------------------
    /**
-    * Creates a normalised SteamID through some small standarisation
+    * Creates a normalised SteamID through some small standardisation
     * manipulations
     */
    function createSteamID($steamID) {

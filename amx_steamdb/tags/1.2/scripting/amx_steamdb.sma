@@ -93,11 +93,11 @@ public plugin_init() {
 }
 
 /**
- * Gets called when client is authorized (SteamID verified)
+ * Gets called when client is authorised (SteamID verified)
  * - Lookups player's details in the database
  */
 public client_authorized(id) {
-   /* Initialize player with blank real name '---' */
+   /* Initialise player with blank real name '---' */
    copy(realname[id-1], 39, "---");
       
    new steamID[40];
@@ -112,7 +112,7 @@ public client_authorized(id) {
       new steamDatabaseLine[128];
       
       /* Reads database file - line by line                                  */
-      /* Notice: You should know that  it is not optimized for thousands  of *
+      /* Notice: You should know that  it is not optimised for thousands  of *
        *         players in  the  database. But it works for like <500 quite *
        *         reliably.                                                   */
       for (new i=0; read_file(steamDatabaseFile, i, steamDatabaseLine, 127,\
@@ -124,7 +124,7 @@ public client_authorized(id) {
          parse(steamDatabaseLine, dbSteamID, 39, dbRealNick, 39);
          
          /* Compare player's SteamID with ID in database                     */
-         /* Optimization hint: Binary  search find  would  make wonders here *
+         /* Optimisation hint: Binary  search find  would  make wonders here *
           *                    for huge  sorted  databases.  But who  cares. */
          if (!strcmp(steamID, dbSteamID)) {
             if (dbRealNick[0]) {

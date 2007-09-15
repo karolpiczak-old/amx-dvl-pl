@@ -11,7 +11,7 @@
  *   from the standard set).                                                 *
  *                                                                           *
  *   From version 1.2,  there is an alternative method (no playing with fake *
- *   map files). Works by just generetaing a special start config file (look *
+ *   map files). Works by just generating a special start config file (look *
  *   further into readme, question 6).                                       *
  *                                                                           *
  *   Useful if there is no way to fully avoid server crashes.                *

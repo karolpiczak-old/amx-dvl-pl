@@ -25,7 +25,7 @@
  * + 2007-03-11 v2.0.4                                                       *
  *   - Added some debugging stuff and verbose logging                        *
  *   - Added FateRevert disable mode (no need to recompile anymore)          *
- *   - Addded more selection types for FateRevert                            *
+ *   - Added more selection types for FateRevert                            *
  *   - Fixed some minor FateRevert issues                                    *
  * + 2007-02-28 v2.0.3                                                       *
  *   - Added 'night mapcycle' support (second map list)                      *
@@ -169,7 +169,7 @@ stock const Float:TaskFreq = 5.0;
 stock const ForceTime = 10;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* Time beforce map change when a warning is presented to the choosing       *
+/* Time before map change when a warning is presented to the choosing       *
  * player.                                                                   *
  *                                                                           *
  * Hint: ForceTime < ForceTimeWarn < amx_concert_choosetime                  *
@@ -268,7 +268,7 @@ new g_pluginVersion[] = "2.0.5";
  *       compatibility they get dynamic register_menu call.
  */
 public plugin_init() {
-   register_plugin("Concert of wishes", g_pluginVersion, "rain");
+   register_plugin("Concert of Wishes", g_pluginVersion, "rain");
    register_cvar("amx_concert_version", g_pluginVersion, FCVAR_SERVER|FCVAR_SPONLY);
    register_dictionary("amx_concert.txt");
    
@@ -291,7 +291,7 @@ public plugin_init() {
     *
     * amx_concert_faterevert_min and amx_concert_faterevert_max set
     * respectively the minimal/maximal number of maps played between
-    * FateRevert occurences
+    * FateRevert occurrences
     * 
     * amx_concert_faterevert_active == 0 disables all FateRevert functionality
     *
