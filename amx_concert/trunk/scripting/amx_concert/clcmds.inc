@@ -25,11 +25,11 @@ public amx_concert(id, level, cid) {
       
       switch (concertMode) {
          case 1:
-            console_print(id, "%L", id, "CONCERT_ENABLED", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_ENABLED", g_pluginVersion);
          case 2:
-            console_print(id, "%L", id, "CONCERT_WEEKEND", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_WEEKEND", g_pluginVersion);
          default:
-            console_print(id, "%L", id, "CONCERT_DISABLED", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_DISABLED", g_pluginVersion);
       }
       
       return PLUGIN_HANDLED;
@@ -42,13 +42,13 @@ public amx_concert(id, level, cid) {
       
       // Not a 1 digit argument
       if (strlen(arg) != 1) {
-         console_print(id, "%L", id, "BOGUS_MODE", g_concertVersion);
+         console_print(id, "%L", id, "BOGUS_MODE", g_pluginVersion);
          return PLUGIN_HANDLED;
       }
       
       // Not a digit argument
       if (!isdigit(arg[0])) {
-         console_print(id, "%L", id, "BOGUS_MODE", g_concertVersion);
+         console_print(id, "%L", id, "BOGUS_MODE", g_pluginVersion);
          return PLUGIN_HANDLED;
       }
       
@@ -64,7 +64,7 @@ public amx_concert(id, level, cid) {
             log_amx("[amx_concert] (%s) %s changes Concert mode to: %d", authid, name, desiredMode);
 #endif
             set_cvar_num("amx_concert_mode", 0);
-            console_print(id, "%L", id, "CONCERT_DISABLED", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_DISABLED", g_pluginVersion);
          }
          case 1: {
 #if defined VERBOSE
@@ -74,7 +74,7 @@ public amx_concert(id, level, cid) {
             log_amx("[amx_concert] (%s) %s changes Concert mode to: %d", authid, name, desiredMode);
 #endif
             set_cvar_num("amx_concert_mode", 1);
-            console_print(id, "%L", id, "CONCERT_ENABLED", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_ENABLED", g_pluginVersion);
          }
          case 2: {
 #if defined VERBOSE
@@ -84,10 +84,10 @@ public amx_concert(id, level, cid) {
             log_amx("[amx_concert] (%s) %s changes Concert mode to: %d", authid, name, desiredMode);
 #endif            
             set_cvar_num("amx_concert_mode", 2);
-            console_print(id, "%L", id, "CONCERT_WEEKEND", g_concertVersion);
+            console_print(id, "%L", id, "CONCERT_WEEKEND", g_pluginVersion);
          }
          default: {
-            console_print(id, "%L", id, "BOGUS_MODE", g_concertVersion);
+            console_print(id, "%L", id, "BOGUS_MODE", g_pluginVersion);
          }
       }
    }
