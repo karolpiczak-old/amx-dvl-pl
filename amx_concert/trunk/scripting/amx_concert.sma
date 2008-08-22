@@ -508,7 +508,7 @@ loadConfig() {
 #endif
 
 /**
- * Includes mp_maxround support
+ * Includes mp_maxrounds support
  */
 #if defined MAXROUNDS_SUPPORT
    #include "amx_concert/maxrounds.inc"
