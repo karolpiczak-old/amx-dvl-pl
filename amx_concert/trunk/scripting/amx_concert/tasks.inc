@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * tasks.inc: set_task tasks, loops, cyclers                                 *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**
@@ -31,7 +31,7 @@ public advertiseConcert() {
       new handicapedFrags = get_cvar_num("amx_concert_handicap");
       new winnerName[40];
       
-      // Add whitespace & bracekts if there is indeed a name
+      // Adds whitespace & brackets if there is indeed a name
       if (g_lastWinnerName[0]) {
          format(winnerName, 39, " (%s)", g_lastWinnerName);
       }
@@ -118,7 +118,7 @@ public checkTimelimit() {
             }
          }
       }
-      // A fail-safe case, means disabled
+      // A fail-safe case - disabled
       default: {
          if (concertMode != 1) {
             g_concertActive = 0; 

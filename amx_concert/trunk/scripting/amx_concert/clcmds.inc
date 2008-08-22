@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * clcmds.inc: Client commands file                                          *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**
@@ -98,7 +98,7 @@ public amx_concert(id, level, cid) {
 /**
  * Wraps /say nextmap
  *
- * Provides players with Concert info, warn about possible nextmap change.
+ * Provides players with Concert info, warns about possible nextmap change.
  */
 public say_nextmap() {
    if (g_concertActive) {

@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * menu.inc: Menus and action handlers                                       *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**

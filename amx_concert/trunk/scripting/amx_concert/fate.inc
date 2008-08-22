@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * fate.inc: FateRevert functions file                                       *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #if defined FATE_REVERT_MODE

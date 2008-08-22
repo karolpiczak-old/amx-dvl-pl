@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * handicap.inc: Handicap functions file                                     *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #if defined HANDICAP_MODE
@@ -49,7 +49,7 @@ saveHandicap(authID[], username[]) {
    get_datadir(handicapFile, 63);
    format(handicapFile, 63, "%s/concert/concert-handicap.dat", handicapFile);
 
-   // Write user's AuthID as 1st line
+   // Writes user's AuthID as 1st line
    write_file(handicapFile, authID, 0);
 
    // If this is a consecutive win, increment win counter
@@ -67,7 +67,7 @@ saveHandicap(authID[], username[]) {
 #endif
    }
    
-   // Write user's name as 3rd line
+   // Writes user's name as 3rd line
    write_file(handicapFile, username, 2);
 }
 #endif

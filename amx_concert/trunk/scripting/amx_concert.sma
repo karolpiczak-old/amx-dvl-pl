@@ -1,7 +1,7 @@
 /* *** AMX Mod X Script **************************************************** *
- * Concert of wishes                                                         *
+ * Concert of wishes (The Request Show / [PL:] Koncert Zyczen)               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 2.0.5 (2007-09-08)                                               *
+ * Version: 2.0.6 (2008-08-22)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *   This plugin  enables the best player (based on fragcount) on the map to *
@@ -13,19 +13,25 @@
  *   Plugin  ten pozwala najlepszemu graczowi  na danej mapie (ilosc fragow) *
  *   na dokonanie wyboru nastepnej granej mapy.                              *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright (c) 2004-2007 rain       /    rain(at)secforce.org              *
+ * Copyright (c) 2004-2008 rain       /    rain(at)secforce.org              *
  * Written for The BORG Collective    /    http://www.theborg.pl             *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *         Latest plugin source and info: http://amx.dvl.pl                  *
+ *    Online compiling available through: http://amx.dvl.pl/compiler.php     *
  * ************************************************************************* */
 
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2008-08-22 v2.0.6                                                       *
+ *   - Added mp_maxrounds support (thanks to seba123)                        *
+ *   - Minor changes in comments (fixed inconsistencies)                     *
  * + 2007-09-08 v2.0.5                                                       *
  *   - License upgraded to GPL v3 or later                                   *
  * + 2007-03-11 v2.0.4                                                       *
  *   - Added some debugging stuff and verbose logging                        *
  *   - Added FateRevert disable mode (no need to recompile anymore)          *
- *   - Added more selection types for FateRevert                            *
+ *   - Added more selection types for FateRevert                             *
  *   - Fixed some minor FateRevert issues                                    *
  * + 2007-02-28 v2.0.3                                                       *
  *   - Added 'night mapcycle' support (second map list)                      *
@@ -84,13 +90,15 @@
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Enables handicap mode                                                     *
- * The best player's frags will be reduced (only for Concert counting)       */
+ *                                                                           *
+ * The best player's frags will be reduced (only for Concert counting).      */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #define HANDICAP_MODE
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Enables the use of FateRevert mode                                        *
- * (Sometimes the worst player will choose the next map)                     */
+ *                                                                           *
+ * Sometimes the worst player will choose the next map.                      */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #define FATE_REVERT_MODE
 
@@ -101,7 +109,8 @@
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Maximal number of maps that can be remembered as recently played          *
- * It  is  a  hardcoded limit. It has nothing  to  do with actual number  of *
+ *                                                                           *
+ * It is a hardcoded limit. It has  nothing to do with the actual  number of *
  * remembered maps. See amx_concert_lastmaps cvar.                           *
  *                                                                           *
  * Hint: amx_concert_lastmaps <= MAX_LAST_MAPS                               */
@@ -111,9 +120,8 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Enables map list sorting                                                  *
  *                                                                           *
- * Use only on small map lists. It is an o(n^2) algorithm so in order to get *
- * better  results, sort  your  map  list  file  manually  and put  it  into *
- * concert.ini file.                                                         */
+ * Now uses natives for sorting, so performance should be acceptable.  Worst *
+ * case scenario is still o(n^2). Disable if the map list is already sorted. */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #define MAP_SORTING
 
@@ -125,6 +133,18 @@
 #define NIGHT_MAPCYCLE
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* Enables mp_maxrounds mode support                                         */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+//#define MAXROUNDS_SUPPORT
+
+#if defined MAXROUNDS_SUPPORT
+   /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+   /* Sets number of rounds before end when map choosing takes place        */
+   /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */	
+	#define ROUNDS_BEFORE 1
+#endif
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Enables additional pre-menu check                                         *
  *                                                                           *
  * Shows a 'random choose'/'choose from menu' switch before actual choose.   *
@@ -133,12 +153,12 @@
 #define MENU_APPROVAL
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* Waits for opened menus to close before displaying Concert menu            *
+/* Waits for opened menus to close before displaying proper Concert menu     *
  *                                                                           *
  * Sometimes can  not work properly.  Active  cheats are said  to block menu *
  * displaying at all when using this. Some valid programs/plugins  can cause *
  * it  to malfunction too. If you have  no problems with it, use freely. But *
- * do not complain if it will create problems.                               */
+ * do not complain if it creates problems.                                   */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 //#define WAIT_FOR_MENU_CLOSURE
 
@@ -157,7 +177,7 @@
 //#define DEBUG
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* Main loop task frequency. Increase for lesser precision/CPU usage.        *
+/* Main loop task frequency (seconds). Increase to lower CPU usage.          *
  * Rather stay < 10.0, default: 5.0                                          */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 stock const Float:TaskFreq = 5.0;
@@ -242,17 +262,24 @@ new g_mapList[MAX_MAPS][32];
    new g_lastWinCount = 1;
 #endif
 
+#if defined FATE_REVERT_MODE
    /**
     * FateRevert state
     */
-#if defined FATE_REVERT_MODE
    new g_fateReverted = 0;
+#endif
+   
+#if defined MAXROUNDS_SUPPORT
+   /**
+    * Number of played rounds
+    */
+   new g_playedRounds = 0;
 #endif
 
 /**
  * Plugin version
  */
-new g_pluginVersion[] = "2.0.5";
+new g_pluginVersion[] = "2.0.6";
 
 /* *** End of global variables ********************************************* */
 
@@ -265,10 +292,10 @@ new g_pluginVersion[] = "2.0.5";
  *   played list
  *
  * Info: No menu registering is done here. Look into menu.inc. Due to ML
- *       compatibility they get dynamic register_menu call.
+ *       compatibility they get dynamic register_menu calls.
  */
 public plugin_init() {
-   register_plugin("Concert of Wishes", g_pluginVersion, "rain");
+   register_plugin("Concert of wishes", g_pluginVersion, "rain");
    register_cvar("amx_concert_version", g_pluginVersion, FCVAR_SERVER|FCVAR_SPONLY);
    register_dictionary("amx_concert.txt");
    
@@ -280,7 +307,7 @@ public plugin_init() {
 #if defined HANDICAP_MODE
    /**
     * Handicap mode. 0 == off, any other value means number of frags removed
-    * from consecutive winner stats (only for best selection).
+    * from consecutive winner's stats (applies only for best player selection).
     */
    register_cvar("amx_concert_handicap", "0");
 #endif
@@ -296,10 +323,10 @@ public plugin_init() {
     * amx_concert_faterevert_active == 0 disables all FateRevert functionality
     *
     * amx_concert_faterevert_mode:
-    *    3 - choose one player from three with the longest connection time
-    *    2 - total random choose
-    *    1 - choose the lamest player (lowest frag/death ratio)
-    *    0 - randomly chooses faterevert_mode
+    *    3 - chooses one player from three with the longest connection time
+    *    2 - chooses player randomly
+    *    1 - chooses the lamest player (lowest frag/death ratio)
+    *    0 - randomly chooses faterevert_mode (1-3)
     */
    register_cvar("amx_concert_faterevert_active", "1");
    register_cvar("amx_concert_faterevert_mode", "1");
@@ -308,7 +335,8 @@ public plugin_init() {
 #endif
    
    /**
-    * Number of last maps remembered (disabled in menu as recently played)
+    * Number of last maps remembered (those maps get disabled in menu
+	* as recently played)
     */
    register_cvar("amx_concert_lastmaps", "10");
    
@@ -368,6 +396,14 @@ public plugin_init() {
 #if defined HANDICAP_MODE
    loadHandicap();
 #endif
+
+#if defined MAXROUNDS_SUPPORT
+   /**
+    * Catches new round events for mp_maxrounds checking
+    */
+    register_logevent("eventNewRound", 2, "0=World triggered", "1=Round_Start");
+    register_event("TextMsg", "eventRestart", "a", "1=4", "2&#Game_C", "2&#Game_w");
+#endif
    
    /**
     * Loads saved CVAR configuration
@@ -426,49 +462,56 @@ loadConfig() {
 }
 
 /**
- * Include client commands
+ * Includes client commands
  */
 #include "amx_concert/clcmds.inc"
 
 /**
- * Include handicap functions
+ * Includes handicap functions
  */
 #if defined HANDICAP_MODE
    #include "amx_concert/handicap.inc"
 #endif
 
 /**
- * Include FateRevert functions
+ * Includes FateRevert functions
  */
 #if defined FATE_REVERT_MODE
    #include "amx_concert/fate.inc"
 #endif
 
 /**
- * Include map processing
+ * Includes map processing
  */
 #include "amx_concert/maps.inc"
 
 /**
- * Include menus, handlers
+ * Includes menus, handlers
  */
 #include "amx_concert/menu.inc"
 
 /**
- * Include selection algorithm
+ * Includes selection algorithm
  */
 #include "amx_concert/selection.inc"
 
 /**
- * Include tasks
+ * Includes tasks
  */
 #include "amx_concert/tasks.inc"
 
 /**
- * Include 'night mapcycle' stock functions
+ * Includes 'night mapcycle' stock functions
  */
 #if defined NIGHT_MAPCYCLE
    #include "amx_concert/night.inc"
 #endif
 
+/**
+ * Includes mp_maxround support
+ */
+#if defined MAXROUNDS_SUPPORT
+   #include "amx_concert/maxrounds.inc"
+#endif
+ 
 //:~ EOF

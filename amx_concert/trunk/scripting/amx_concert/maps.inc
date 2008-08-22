@@ -5,7 +5,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * maps.inc: Maps processing                                                 *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
  
 /**
@@ -53,7 +53,7 @@ loadMaps() {
    new lastMapsFile[64];
    new lastMaps[MAX_LAST_MAPS][32];
 
-   // Load list of recently played maps      
+   // Loads list of recently played maps      
    get_datadir(lastMapsFile, 63);
    format(lastMapsFile, 63, "%s/concert/concert-last.dat", lastMapsFile);
 
@@ -76,12 +76,12 @@ loadMaps() {
       trim(line);
       copy(g_mapList[g_numberOfMaps], 31, line);
 
-      // Omit invalid maps
+      // Omits invalid maps
       if (!is_map_valid(g_mapList[g_numberOfMaps])) {
          continue;
       }
          
-      // Omit recently played
+      // Omits recently played
       new playedRecently = 0;
       for (new j=0; (j<lastMapsLimit); ++j) {
          if (!strcmp(g_mapList[g_numberOfMaps], lastMaps[j])) {
@@ -90,7 +90,7 @@ loadMaps() {
          }
       }
 
-      // Increase map counter
+      // Increases map counter
       if (!playedRecently) {
          ++g_numberOfMaps;
       }
@@ -144,11 +144,11 @@ public writeCurrentMap() {
       new lastMaps[MAX_LAST_MAPS][32];
       new dummyRef;
       
-      // Read saved maps
+      // Reads saved maps
       for (new i=0; (i<MAX_LAST_MAPS-1) && read_file(lastMapsFile, i, \
            lastMaps[i], 31, dummyRef); ++i) { /* Dummy statement */ }
       
-      // Append current map at the first line
+      // Appends current map at the first line
       if (delete_file(lastMapsFile)) {
          write_file(lastMapsFile, currentMap);
          

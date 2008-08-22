@@ -3,9 +3,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * License: GPL v3 or later (http://www.gnu.org/licenses/gpl.txt)            *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * selection.inc: Best player selection methods.                             *
+ * selection.inc: Best player selection methods                              *
  *                                                                           *
- * For more information, see main file (amx_concert.sma)                     *
+ * For more information, see the main file (amx_concert.sma).                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**
@@ -16,9 +16,9 @@ chooseTheOne() {
    // Fate is cruel
    if (isTimeForFateRevert()) {
       g_fateReverted = 1;
-#if defined VERBOSE
+   #if defined VERBOSE
       log_amx("[amx_concert] Fate reverted. Choosing the worst player.");
-#endif
+   #endif
       chooseTheWorst();
       return;
    }
@@ -117,10 +117,10 @@ chooseTheOne() {
       saveHandicap(checkAuthID, name);
 #endif
       
-      // Announce the best player
+      // Announces the best player
       printTheOne();
       
-      // Show map selection menu, a bit delayed
+      // Shows map selection menu, a bit delayed
       set_task(3.0, "makeHimChoose", MAKE_CHOOSE_TASKID);
    } else {
       // No player found
@@ -154,7 +154,7 @@ chooseTheWorst() {
 #endif
 
    switch (faterevertMode) {
-      // Choose the lamest one
+      // Chooses the lamest one
       case 1: {
          new Float:checkRatio;
          checkRatio = 1000.0;
@@ -164,7 +164,7 @@ chooseTheWorst() {
             new frags = get_user_frags(playerIndex);
             new deaths = get_user_deaths(playerIndex);
             
-            // Omit spectator team, can be buggy with some mods. Checked with CS only.
+            // Omits spectator team, can be buggy with some mods. Checked with CS only.
             new userTeam = get_user_team(playerIndex);
             if (userTeam == 3) {
 #if defined DEBUG               
@@ -201,7 +201,7 @@ chooseTheWorst() {
          log_amx("[amx_concert] Loser's ratio: %f", checkRatio);
 #endif
       }
-      // Choose fully random
+      // Makes a fully random choice
       case 2: {
          theOne = players[random_num(0, playerCount-1)];
 #if defined VERBOSE
@@ -210,7 +210,7 @@ chooseTheWorst() {
          log_amx("[amx_concert] FateRevert randomly chose: %s", name);
 #endif
       }
-      // Choose random from top3 (based on playing time)
+      // Chooses randomly from top3 (based on playing time)
       case 3: {
          new firstPlayer, secondPlayer, thirdPlayer;
          new firstTime, secondTime, thirdTime;
@@ -248,8 +248,8 @@ chooseTheWorst() {
          }
          
          // Not that many players playing, huh?
-         // If we don't have even 3 players to make a good choose from,
-         // than it doesn't really matter who will choose.
+         // If we don't have even 3 players to make a good choice,
+         // then it doesn't really matter who will choose.
          if (theOne == 0) {
 #if defined VERBOSE
             log_amx("[amx_concert] Not enough players for FateRevert 'playing time' mode. Forcing the longest playing.");
@@ -268,10 +268,10 @@ chooseTheWorst() {
    if (theOne != 0) {
       g_theOneID = theOne;
       
-      // Announce the worst player
+      // Announces the worst player
       printTheOne();
       
-      // Show map selection menu, a bit delayed
+      // Shows map selection menu, a bit delayed
       set_task(3.0, "makeHimChoose", MAKE_CHOOSE_TASKID);
    } else {
       // No player found
