@@ -169,11 +169,12 @@ public OnPluginStart() {
 	
 	AutoExecConfig(true, "jmp_tools");
 	
-	HookEvent("teamplay_round_win", Event_TeamplayRoundWin);
-	HookEvent("teamplay_round_start", Event_TeamplayRoundStart);
-	HookEvent("player_death", Event_PlayerDeath);
-	HookEvent("player_spawn", Event_PlayerSpawn);
-	HookEvent("player_hurt", Event_PlayerHurt);
+	HookEvent("teamplay_round_stalemate", EventTeamplayRoundEnd);
+	HookEvent("teamplay_round_win", EventTeamplayRoundEnd);
+	HookEvent("teamplay_round_start", EventTeamplayRoundStart);
+	HookEvent("player_death", EventPlayerDeath);
+	HookEvent("player_spawn", EventPlayerSpawn);
+	HookEvent("player_hurt", EventPlayerHurt);
 	
 	RegConsoleCmd("say", CommandSay);
 	RegConsoleCmd("say_team", CommandSay);
@@ -203,10 +204,11 @@ public OnClientDisconnect(client) {
  * Listens for CVAR changes (jmp_autorespawn)
  */
 public OnAutorespawnChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
-	if(StringToInt(newValue) == 0)
+	if(StringToInt(newValue) == 0) {
 		g_autorespawn = false;
-	else
+	} else {
 		g_autorespawn = true;
+	}
 }
 
 /** 
@@ -271,21 +273,21 @@ public OnBroadcastChange(Handle:convar, const String:oldValue[], const String:ne
 /** 
  * Disables instant respawning after round end
  */
-public Event_TeamplayRoundWin(Handle:event, const String:name[], bool:dontBroadcast) {
+public EventTeamplayRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
 	g_disableAutorespawn = true;
 }
 
 /** 
  * Reenables instant respawning
  */
-public Event_TeamplayRoundStart(Handle:event, const String:name[], bool:dontBroadcast) {
+public EventTeamplayRoundStart(Handle:event, const String:name[], bool:dontBroadcast) {
 	g_disableAutorespawn = false;
 }
 
 /** 
  * Respawns client if instant respawn is enabled
  */
-public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
+public EventPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
 	new deathFlags = GetEventInt(event, "death_flags");
 	new clientID = GetEventInt(event, "userid");
 	
@@ -297,7 +299,7 @@ public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) 
 /** 
  * Boosts player's health on spawn if HP boost is enabled
  */
-public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
+public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 	new clientID = GetEventInt(event, "userid");
 	new client = GetClientOfUserId(clientID);
 
@@ -309,7 +311,7 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) 
 /** 
  * Heals, boosts and resupplies players when they get hurt
  */
-public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
+public EventPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 	new clientID = GetEventInt(event, "userid");
 	new client = GetClientOfUserId(clientID);
 
