@@ -55,15 +55,22 @@
 #include <tf2>
 #include <tf2_stocks>
 #include <clients>
+#include <nextmap>
 #pragma semicolon 1
 
 /* *** Script settings (change as you like) ******************************** */
 
+/** 
+ * Prefix for all messages broadcasted through chat
+ */
 #define CHATPREFIX "\x03[Jump tools] \x01"
 
 /* *** End of script settings ********************************************** */
 
-/* *** Global variables **************************************************** */
+/** 
+ * Hardcoded maximum for number of Control Points
+ */
+#define MAXCPS 8
 
 /**
  * Plugin version
@@ -108,6 +115,34 @@ new bool:g_crits = false;
 new Float:g_broadcastFreq = 120.0;
 
 /**
+ * Should control points be removed?
+ */
+new bool:g_removecp = true;
+
+/**
+ * Should touching CP be announced?
+ */
+new bool:g_announce = true;
+
+/**
+ * Number of Control Points on map
+ */
+new g_CPnum = 0;
+
+/**
+ * Time to map change after last CP is touched
+ */
+new Float:g_changetime = 10.0;
+
+/** 
+ * Is map change in progress?
+ * 
+ * Set to true when last Control Point is reached and
+ * server is waiting to change the map.
+ */
+new bool:g_mapchangeInProgress = false;
+
+/**
  * Current HP boost setting for each player
  * 
  * false = HP boost disabled
@@ -124,6 +159,19 @@ new bool:g_users_HPboost[MAXPLAYERS+1];
 new bool:g_users_autoresupply[MAXPLAYERS+1];
 
 /**
+ * Number of Control Points touched for each player
+ */
+new g_users_CPsTouched[MAXPLAYERS+1];
+
+/**
+ * Was Control Point touched by player?
+ * 
+ * g_users_isCPTouched[CPIndex][ClientIndex]:
+ * true = CP numbered "CPIndex" was touched by player with index "ClientIndex"
+ */
+new bool:g_users_isCPTouched[MAXCPS+1][MAXPLAYERS+1];
+
+/**
  * CVAR handles
  */
 new Handle:g_jmp_autorespawn;
@@ -132,6 +180,9 @@ new Handle:g_jmp_autoheal;
 new Handle:g_jmp_hpboost;
 new Handle:g_jmp_crits;
 new Handle:g_jmp_broadcast;
+new Handle:g_jmp_removecp;
+new Handle:g_jmp_announce;
+new Handle:g_jmp_changetime;
 new Handle:g_tf_weapon_criticals;
 
 /* *** End of global variables ********************************************* */
@@ -148,17 +199,21 @@ public Plugin:myinfo = {
 
 /* *** Main plugin code **************************************************** */
 /**
- * Plugin initialisation
+ * Plugin initialisation (one-time)
  */
 public OnPluginStart() {
+	CreateConVar("jmp_version", g_pluginVersion, "Jump server toolbox version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	
 	g_jmp_autorespawn = CreateConVar("jmp_autorespawn", "1", "Enable instant respawning", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_autoresupply = CreateConVar("jmp_autoresupply", "1", "Enable automatic ammo resupply with say \"!ammo\"", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_autoheal = CreateConVar("jmp_autoheal", "1", "Enable automatic healing", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_hpboost = CreateConVar("jmp_hpboost", "1", "Enable HP boosting with say \"!hp\"", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_crits = CreateConVar("jmp_crits", "0", "Enable random crits", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_broadcast = CreateConVar("jmp_broadcast", "120", "Plugin broadcast frequency in seconds", FCVAR_PLUGIN, true, 30.0, true, 1200.0);
+	g_jmp_removecp = CreateConVar("jmp_removecp", "1", "Remove Control Points from the map", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_jmp_announce = CreateConVar("jmp_announce", "1", "Announce when players reach Control Points", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_jmp_changetime = CreateConVar("jmp_changetime", "10.0", "Time to map change when last Control Point is reached (in seconds)", FCVAR_PLUGIN, true, 0.0, true, 1200.0);
 	g_tf_weapon_criticals = FindConVar("tf_weapon_criticals");
-	SetConVarBool(g_tf_weapon_criticals, false);
 	
 	HookConVarChange(g_jmp_autorespawn, OnAutorespawnChange);
 	HookConVarChange(g_jmp_autoresupply, OnAutoresupplyChange);
@@ -166,6 +221,9 @@ public OnPluginStart() {
 	HookConVarChange(g_jmp_hpboost, OnHPboostChange);
 	HookConVarChange(g_jmp_crits, OnCritsChange);
 	HookConVarChange(g_jmp_broadcast, OnBroadcastChange);
+	HookConVarChange(g_jmp_removecp, OnRemoveCPChange);
+	HookConVarChange(g_jmp_announce, OnAnnounceChange);
+	HookConVarChange(g_jmp_changetime, OnChangetimeChange);
 	
 	AutoExecConfig(true, "jmp_tools");
 	
@@ -175,13 +233,42 @@ public OnPluginStart() {
 	HookEvent("player_death", EventPlayerDeath);
 	HookEvent("player_spawn", EventPlayerSpawn);
 	HookEvent("player_hurt", EventPlayerHurt);
+	HookEvent("controlpoint_starttouch", EventCPTouched);
 	
 	RegConsoleCmd("say", CommandSay);
 	RegConsoleCmd("say_team", CommandSay);
-	
-	CreateTimer(30.0, BroadcastPlugin); // first broadcast hardcoded to 30 seconds after start
 }
 
+/** 
+ * Plugin initialization on every map start
+ */
+public OnConfigsExecuted() {
+	g_autorespawn = GetConVarBool(g_jmp_autorespawn);
+	g_autoresupply = GetConVarBool(g_jmp_autoresupply);
+	g_autoheal = GetConVarBool(g_jmp_autoheal);
+	g_HPboost = GetConVarBool(g_jmp_hpboost);
+
+	g_crits = GetConVarBool(g_jmp_crits);
+	SetConVarBool(g_tf_weapon_criticals, g_crits);
+	
+	g_broadcastFreq = GetConVarFloat(g_jmp_broadcast);
+	if (g_broadcastFreq < 30 || g_broadcastFreq > 1200) {
+		g_broadcastFreq = 120.0;
+	}
+	
+	g_removecp = GetConVarBool(g_jmp_removecp);
+	if (g_removecp) RemoveCPs();
+	
+	g_announce = GetConVarBool(g_jmp_announce);
+	
+	g_changetime = GetConVarFloat(g_jmp_changetime);
+	if (g_changetime < 5 || g_changetime > 1200) {
+		g_changetime = 10.0;
+	}
+
+	CreateTimer(30.0, BroadcastPlugin); // first broadcast hardcoded to 30 seconds after start
+}
+ 
 /* *** Events ************************************************************** */
 /**
  *  Purges client status and show help when user connects
@@ -198,6 +285,14 @@ public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
  */
 public OnClientDisconnect(client) {
 	purgeUserStatus(client);
+}
+
+/** 
+ * 
+ */
+public OnMapStart() {
+	PrecacheSound("misc/achievement_earned.wav");
+	AddFileToDownloadsTable("sound/misc/achievement_earned.wav");
 }
 
 /** 
@@ -271,6 +366,41 @@ public OnBroadcastChange(Handle:convar, const String:oldValue[], const String:ne
 } 
 
 /** 
+ * Listens for CVAR changes (jmp_removecp)
+ */
+public OnRemoveCPChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
+	if(StringToInt(newValue) == 0) {
+		g_removecp = false;
+		ServerCommand("mp_restartgame 1");
+	} else {
+		g_removecp = true;
+		RemoveCPs();
+	}
+}
+
+/** 
+ * Listens for CVAR changes (jmp_announce)
+ */
+public OnAnnounceChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
+	if(StringToInt(newValue) == 0) {
+		g_announce = false;
+	} else {
+		g_announce = true;
+	}
+}
+
+/** 
+ * Listens for CVAR changes (jmp_changetime)
+ */
+public OnChangetimeChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
+	g_changetime = StringToFloat(newValue);
+	
+	if (g_changetime < 0 || g_changetime > 1200) {
+		g_changetime = 10.0;
+	}
+}
+
+/** 
  * Disables instant respawning after round end
  */
 public EventTeamplayRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
@@ -282,6 +412,9 @@ public EventTeamplayRoundEnd(Handle:event, const String:name[], bool:dontBroadca
  */
 public EventTeamplayRoundStart(Handle:event, const String:name[], bool:dontBroadcast) {
 	g_disableAutorespawn = false;
+	
+	if (g_removecp) RemoveCPs();
+	purgeCPAll();
 }
 
 /** 
@@ -323,6 +456,49 @@ public EventPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 	
 	if (g_autoresupply && g_users_autoresupply[client]) {
 		CreateTimer(0.1, ResupplyClient, clientID);
+	}
+}
+
+/** 
+ * Announces when players reach CPs
+ * 
+ * Code derived from Jump Mode 1.4.1 by TheJCS
+ */
+public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
+	if (g_removecp) {
+		new client = GetEventInt(event, "player");
+		new CP = GetEventInt(event, "area");
+		
+		if(!g_users_isCPTouched[CP][client]) {
+			++g_users_CPsTouched[client];
+
+			if (g_announce) {
+				new String:playerName[64];
+
+				GetClientName(client, playerName, 64);
+				AttachParticle(client, "achieved");
+				EmitSoundToAll("misc/achievement_earned.wav");
+				
+				g_users_isCPTouched[CP][client] = true;
+				
+				if(g_users_CPsTouched[client] == g_CPnum)
+					PrintToChatAll("%s Player \x03%s \x01 has reached the final Control Point! Congratulations!", CHATPREFIX, playerName);
+				else
+					PrintToChatAll("%s Player \x03%s \x01 has reached a Control Point (%i of %i)! Keep going!", CHATPREFIX, playerName, g_users_CPsTouched[client], g_CPnum);
+			}
+			
+			if(g_users_CPsTouched[client] == g_CPnum && g_changetime > 0.0 && !g_mapchangeInProgress) {
+				new String:mapName[64];
+				GetNextMap(mapName, 64);
+				
+				new timeRounded = RoundToCeil(g_changetime);
+				
+				PrintToChatAll("%s Current map will be changed to %s in %i seconds!", CHATPREFIX, mapName, timeRounded);
+				CreateTimer(g_changetime, ChangeMap);
+				
+				g_mapchangeInProgress = true;
+			}
+		}
 	}
 }
 
@@ -384,9 +560,10 @@ public Action:ResupplyClient(Handle:timer, any:clientID) {
  * - say !jumphelp
  * 
  * Echoing commands is suppressed.
+ * 
+ * Code derived from SourceMod Rock The Vote Plugin.
  */
 public Action:CommandSay(client, args) {
-	// Code derived from SourceMod Rock The Vote Plugin
 	if (!client) {
 		return Plugin_Continue;
 	}
@@ -466,11 +643,40 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 }
 
 /** 
+ * Changelevel directly ported from Jump Mode 1.4.1 by TheJCS 
+ */
+public Action:ChangeMap(Handle:timer) {
+	new String:mapName[64];
+	GetNextMap(mapName, 64);
+	ForceChangeLevel(mapName, "Last Control Point reached. Auto changelevel.");
+}
+
+/** 
  * Purges user table for given client index
  */
 purgeUserStatus(client) {
 	g_users_HPboost[client] = false;
 	g_users_autoresupply[client] = false;
+	purgeCP(client);
+}
+
+/** 
+ * Purges Control Point status for all clients
+ */
+purgeCPAll() {
+	for (new i = 0; i <= MAXPLAYERS; ++i) {
+		purgeCP(i);
+	}
+}
+
+/** 
+ * Purges Control Point status for given client index
+ */
+purgeCP(client) {
+	for (new i = 0; i <= MAXCPS; ++i) {
+		g_users_isCPTouched[i][client] = false;
+	}
+	g_users_CPsTouched[client] = 0;
 }
 
 /** 
@@ -503,6 +709,66 @@ toggleAutoresupply(client) {
 		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic ammo resupply enabled");
 		CreateTimer(0.1, ResupplyClient, clientID);		
 	}
+}
+
+/** 
+ * Convert Control Points to jump goals
+ * 
+ * Ported from Jump Mode 1.4.1 by TheJCS 
+ */
+RemoveCPs() {
+	new iterator = -1;
+	g_CPnum = 0;
+	
+	while ((iterator = FindEntityByClassname(iterator, "trigger_capture_area")) != -1) {
+		SetVariantString("2 0");
+		AcceptEntityInput(iterator, "SetTeamCanCap");
+		SetVariantString("3 0");
+		AcceptEntityInput(iterator, "SetTeamCanCap");
+		++g_CPnum;
+	}
+}
+
+/** 
+ * Particle effects directly ported from Jump Mode 1.4.1 by TheJCS 
+ */
+AttachParticle(ent, String:particleType[]) {
+	new particle = CreateEntityByName("info_particle_system");
+	
+	new String:tName[128];
+	if (IsValidEdict(particle)) {
+		new Float:pos[3];
+		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", pos);
+		TeleportEntity(particle, pos, NULL_VECTOR, NULL_VECTOR);
+		
+		Format(tName, sizeof(tName), "target%i", ent);
+		DispatchKeyValue(ent, "targetname", tName);
+		
+		DispatchKeyValue(particle, "targetname", "tf2particle");
+		DispatchKeyValue(particle, "parentname", tName);
+		DispatchKeyValue(particle, "effect_name", particleType);
+		DispatchSpawn(particle);
+		SetVariantString(tName);
+		AcceptEntityInput(particle, "SetParent", particle, particle, 0);
+		SetVariantString("head");
+		AcceptEntityInput(particle, "SetParentAttachment", particle, particle, 0);
+		ActivateEntity(particle);
+		AcceptEntityInput(particle, "start");
+		CreateTimer(5.0, DeleteParticles, particle);
+	}
+}
+
+/** 
+ * Particle effects directly ported from Jump Mode 1.4.1 by TheJCS 
+ */
+public Action:DeleteParticles(Handle:timer, any:particle) {
+    if (IsValidEntity(particle)) {
+        new String:classname[256];
+        GetEdictClassname(particle, classname, sizeof(classname));
+        if (StrEqual(classname, "info_particle_system", false)) {
+            RemoveEdict(particle);
+        }
+    }
 }
 
 /* *** End of plugin code ************************************************** */
