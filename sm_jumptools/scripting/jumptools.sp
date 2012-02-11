@@ -1,7 +1,7 @@
 /* *** SourceMod script **************************************************** *
  * Jump server toolbox                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 1.0.0 (2012-02-11)                                               *
+ * Version: 1.0.1 (2012-02-11)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *  A bunch of tools useful when running Jump servers:                       *
@@ -10,6 +10,7 @@
  *  - automatic ammo resupplying (per user)                                  *
  *  - boosting player HP (per user)                                          *
  *  - disabling crits                                                        *
+ *  - converting Control Points to jump goals (with completion announcing)   *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright (c) 2012 Eravinor     /     eravinor@secforce.org               *
  * Written for SkillPoint          /     http://www.skillpoint.pl            *
@@ -18,6 +19,10 @@
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2012-02-11 v.1.0.1                                                      *
+ *   - Ported jump mode for Control Points                                   *
+ *   - Fixed auto-generated config                                           *
+ *   - Fixed CVAR handling                                                   *
  * + 2012-02-11 v.1.0.0                                                      *
  *   - Initial release                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -75,7 +80,7 @@
 /**
  * Plugin version
  */
-new String:g_pluginVersion[] = "1.0.0";
+new String:g_pluginVersion[] = "1.0.1";
 
 /**
  * Is instant respawn enabled?
@@ -174,6 +179,7 @@ new bool:g_users_isCPTouched[MAXCPS+1][MAXPLAYERS+1];
 /**
  * CVAR handles
  */
+new Handle:g_jmp_version;
 new Handle:g_jmp_autorespawn;
 new Handle:g_jmp_autoresupply;
 new Handle:g_jmp_autoheal;
@@ -202,7 +208,7 @@ public Plugin:myinfo = {
  * Plugin initialisation (one-time)
  */
 public OnPluginStart() {
-	CreateConVar("jmp_version", g_pluginVersion, "Jump server toolbox version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	g_jmp_version = CreateConVar("jmp_version", g_pluginVersion, "Jump server toolbox version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	
 	g_jmp_autorespawn = CreateConVar("jmp_autorespawn", "1", "Enable instant respawning", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_autoresupply = CreateConVar("jmp_autoresupply", "1", "Enable automatic ammo resupply with say \"!ammo\"", FCVAR_PLUGIN, true, 0.0, true, 1.0);
@@ -225,7 +231,7 @@ public OnPluginStart() {
 	HookConVarChange(g_jmp_announce, OnAnnounceChange);
 	HookConVarChange(g_jmp_changetime, OnChangetimeChange);
 	
-	AutoExecConfig(true, "jmp_tools");
+	AutoExecConfig(true, "jumptools");
 	
 	HookEvent("teamplay_round_stalemate", EventTeamplayRoundEnd);
 	HookEvent("teamplay_round_win", EventTeamplayRoundEnd);
@@ -243,6 +249,8 @@ public OnPluginStart() {
  * Plugin initialization on every map start
  */
 public OnConfigsExecuted() {
+	SetConVarString(g_jmp_version, g_pluginVersion);
+	
 	g_autorespawn = GetConVarBool(g_jmp_autorespawn);
 	g_autoresupply = GetConVarBool(g_jmp_autoresupply);
 	g_autoheal = GetConVarBool(g_jmp_autoheal);
@@ -276,7 +284,7 @@ public OnConfigsExecuted() {
 public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
 	purgeUserStatus(client);
 	new clientID = GetClientUserId(client);
-	CreateTimer(15.0, ShowHelp, clientID);
+	CreateTimer(30.0, ShowHelp, clientID);
 	return true;
 }
 
