@@ -1,7 +1,7 @@
 /* *** SourceMod script **************************************************** *
  * Jump server toolbox                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 1.0.1 (2012-02-11)                                               *
+ * Version: 1.1.0 (2012-02-17)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *  A bunch of tools useful when running Jump servers:                       *
@@ -19,6 +19,8 @@
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2012-02-17 v.1.1.0                                                      *
+ *   - Ported location saving & loading functionality                        * 
  * + 2012-02-11 v.1.0.1                                                      *
  *   - Ported jump mode for Control Points                                   *
  *   - Fixed auto-generated config                                           *
@@ -30,6 +32,8 @@
 /* ************************************************************************* *
  * Parts of code derived from the following GPL licensed plugins:            *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + SM_CheckpointSaver 1.03 by dataviruset                                  *
+ *   [@]: http://forums.alliedmods.net/showthread.php?t=118215               *
  * + Autorespawn for Admins 1.5.5 by Chefe                                   *
  *   [@]: http://forums.alliedmods.net/showthread.php?t=110918               *
  * + Jump Mode 1.4.1 by TheJCS                                               *
@@ -57,6 +61,7 @@
 /* *** Headers ************************************************************* */ 
 #include <sourcemod>
 #include <sdktools>
+#include <sdktools_entoutput>
 #include <tf2>
 #include <tf2_stocks>
 #include <clients>
@@ -80,7 +85,7 @@
 /**
  * Plugin version
  */
-new String:g_pluginVersion[] = "1.0.1";
+new String:g_pluginVersion[] = "1.1.0";
 
 /**
  * Is instant respawn enabled?
@@ -139,6 +144,16 @@ new g_CPnum = 0;
  */
 new Float:g_changetime = 10.0;
 
+/**
+ * Is location saving & loading possible?
+ */
+new bool:g_teleport = true;
+
+/**
+ * Is "no blocking" mode active?
+ */
+new bool:g_noblock = true;
+
 /** 
  * Is map change in progress?
  * 
@@ -177,6 +192,31 @@ new g_users_CPsTouched[MAXPLAYERS+1];
 new bool:g_users_isCPTouched[MAXCPS+1][MAXPLAYERS+1];
 
 /**
+ * Current saved position for each player
+ */
+new Float:g_users_savedPos[MAXPLAYERS+1][3];
+
+/**
+ * Current saved position (angle) for each player
+ */
+new Float:g_users_savedAngle[MAXPLAYERS+1][3];
+
+/**
+ * Current autoload setting for each player
+ * 
+ * false = autoload disabled
+ * true = autoload enabled
+ */
+new bool:g_users_autoload[MAXPLAYERS+1];
+
+/**
+ * Offset to m_CollisionGroup property
+ * 
+ * Internal use.
+ */
+new g_collisionGroup;
+
+/**
  * CVAR handles
  */
 new Handle:g_jmp_version;
@@ -189,6 +229,8 @@ new Handle:g_jmp_broadcast;
 new Handle:g_jmp_removecp;
 new Handle:g_jmp_announce;
 new Handle:g_jmp_changetime;
+new Handle:g_jmp_teleport;
+new Handle:g_jmp_noblock;
 new Handle:g_tf_weapon_criticals;
 
 /* *** End of global variables ********************************************* */
@@ -219,6 +261,8 @@ public OnPluginStart() {
 	g_jmp_removecp = CreateConVar("jmp_removecp", "1", "Remove Control Points from the map", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_announce = CreateConVar("jmp_announce", "1", "Announce when players reach Control Points", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_changetime = CreateConVar("jmp_changetime", "10.0", "Time to map change when last Control Point is reached (in seconds)", FCVAR_PLUGIN, true, 0.0, true, 1200.0);
+	g_jmp_teleport = CreateConVar("jmp_teleport", "1", "Enable location saving & loading", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_jmp_noblock = CreateConVar("jmp_noblock", "1", "Enable \"no collision\" mode", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_tf_weapon_criticals = FindConVar("tf_weapon_criticals");
 	
 	HookConVarChange(g_jmp_autorespawn, OnAutorespawnChange);
@@ -230,6 +274,8 @@ public OnPluginStart() {
 	HookConVarChange(g_jmp_removecp, OnRemoveCPChange);
 	HookConVarChange(g_jmp_announce, OnAnnounceChange);
 	HookConVarChange(g_jmp_changetime, OnChangetimeChange);
+	HookConVarChange(g_jmp_teleport, OnTeleportChange);
+	HookConVarChange(g_jmp_noblock, OnNoblockChange);
 	
 	AutoExecConfig(true, "jumptools");
 	
@@ -243,6 +289,11 @@ public OnPluginStart() {
 	
 	RegConsoleCmd("say", CommandSay);
 	RegConsoleCmd("say_team", CommandSay);
+	
+	g_collisionGroup = FindSendPropOffs("CBaseEntity", "m_CollisionGroup");
+	if (g_collisionGroup == -1) {
+		SetFailState("[Jump tools] Internal error in \"no block\" module.");
+	}
 }
 
 /** 
@@ -273,6 +324,12 @@ public OnConfigsExecuted() {
 	if (g_changetime < 5 || g_changetime > 1200) {
 		g_changetime = 10.0;
 	}
+	
+	g_teleport = GetConVarBool(g_jmp_teleport);
+	
+	if (g_autoresupply && g_autoheal) ToggleResupplies(false);
+	
+	if (g_teleport) hookTeleporters();
 
 	CreateTimer(30.0, BroadcastPlugin); // first broadcast hardcoded to 30 seconds after start
 }
@@ -320,8 +377,10 @@ public OnAutorespawnChange(Handle:convar, const String:oldValue[], const String:
 public OnAutoresupplyChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
 	if(StringToInt(newValue) == 0) {
 		g_autoresupply = false;
+		ToggleResupplies(true);
 	} else {
 		g_autoresupply = true;
+		if (g_autoheal) ToggleResupplies(false);
 	}
 }
 
@@ -331,8 +390,10 @@ public OnAutoresupplyChange(Handle:convar, const String:oldValue[], const String
 public OnAutohealChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
 	if(StringToInt(newValue) == 0) {
 		g_autoheal = false;
+		ToggleResupplies(true);
 	} else {
 		g_autoheal = true;
+		if (g_autoresupply) ToggleResupplies(false);
 	}
 }
 
@@ -409,6 +470,40 @@ public OnChangetimeChange(Handle:convar, const String:oldValue[], const String:n
 }
 
 /** 
+ * Listens for CVAR changes (jmp_teleport)
+ */
+public OnTeleportChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
+	if(StringToInt(newValue) == 0) {
+		g_teleport = false;
+	} else {
+		g_teleport = true;
+	}
+}
+
+/** 
+ * Listens for CVAR changes (jmp_noblock)
+ */
+public OnNoblockChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
+	if(StringToInt(newValue) == 0) {
+		g_noblock = false;
+
+		for (new i = 1; i <= MaxClients; ++i) {
+			if ((IsClientInGame(i)) && (IsPlayerAlive(i))) {
+				SetEntData(i, g_collisionGroup, 5, 4, true);
+			}
+		}
+	} else {
+		g_noblock = true;
+		
+		for (new i = 1; i <= MaxClients; ++i) {
+			if ((IsClientInGame(i)) && (IsPlayerAlive(i))) {
+				SetEntData(i, g_collisionGroup, 2, 4, true);
+			}
+		}
+	}
+}
+
+/** 
  * Disables instant respawning after round end
  */
 public EventTeamplayRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
@@ -422,6 +517,9 @@ public EventTeamplayRoundStart(Handle:event, const String:name[], bool:dontBroad
 	g_disableAutorespawn = false;
 	
 	if (g_removecp) RemoveCPs();
+	
+	if (g_autoresupply && g_autoheal) ToggleResupplies(false);
+	
 	purgeCPAll();
 }
 
@@ -446,6 +544,16 @@ public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 
 	if (g_HPboost && g_users_HPboost[client]) {
 		CreateTimer(0.1, BoostClient, clientID);
+	}
+	
+	if (g_noblock) {
+		SetEntData(client, g_collisionGroup, 2, 4, true);
+	}
+	
+	if (g_teleport) {
+		if (g_users_autoload[client]) {
+			LoadPosition(client);
+		}
 	}
 }
 
@@ -510,6 +618,25 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 	}
 }
 
+public callbackTeleportTriggered(const String:output[], caller, activator, Float:delay) {
+	if (g_teleport && g_users_autoload[activator]) { 
+		new Handle:menu = CreateMenu(AutoloadMenu);
+		SetMenuTitle(menu, "Load last position?");
+		AddMenuItem(menu, "yes", "Yes");
+		AddMenuItem(menu, "no", "No");
+		SetMenuExitButton(menu, false);
+		DisplayMenu(menu, activator, 5);
+	}
+}
+
+public AutoloadMenu(Handle:menu, MenuAction:action, param1, param2) {
+	if (action == MenuAction_Select) {
+		if (param2 == 0) LoadPosition(param1);
+	} else if (action == MenuAction_End) {
+		CloseHandle(menu);
+	}
+}
+
 /* *** Other functions ***************************************************** */
 /** 
  * Forces respawn for given userID
@@ -566,6 +693,9 @@ public Action:ResupplyClient(Handle:timer, any:clientID) {
  * - say !hp
  * - say !ammo
  * - say !jumphelp
+ * - say !s and say !save
+ * - say !l and say !load
+ * - say !autoload
  * 
  * Echoing commands is suppressed.
  * 
@@ -601,6 +731,15 @@ public Action:CommandSay(client, args) {
 		new clientID = GetClientUserId(client);
 		CreateTimer(0.1, ShowHelp, clientID);
 		handled = true;
+	} else if ((strcmp(text[startidx], "!load", false) == 0) || (strcmp(text[startidx], "!l", false) == 0) ) {
+		LoadPosition(client);
+		handled = true;
+	} else if ((strcmp(text[startidx], "!save", false) == 0) || (strcmp(text[startidx], "!s", false) == 0) ) {
+		SavePosition(client);
+		handled = true;
+	} else if (strcmp(text[startidx], "!autoload", false) == 0) {
+		toggleAutoload(client);
+		handled = true;
 	}
 	
 	SetCmdReplySource(old);
@@ -629,24 +768,31 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 	
 	if (IsClientInGame(client)) {
 		PrintToChat(client, "%s This server is running Jump server toolbox %s", CHATPREFIX, g_pluginVersion);
-		PrintToChat(client, "%s Available commands:", CHATPREFIX);
-			
-		if (g_autoresupply) {
-			PrintToChat(client, "%s - say !ammo to toggle automatic ammo resupply", CHATPREFIX);
-		}
-		
-		if (g_HPboost) {
-			PrintToChat(client, "%s - say !hp to boost your health", CHATPREFIX);
-		}
-		
-		if (!g_autoresupply && g_HPboost) {
-			PrintToChat(client, "%s - all client commands are currently disabled", CHATPREFIX);
-		}
 		
 		PrintToChat(client, "%s Status:", CHATPREFIX);
 		PrintToChat(client, "%s - instant respawning is %s", CHATPREFIX, (g_autorespawn ? "enabled" : "disabled"));
 		PrintToChat(client, "%s - automatic healing is %s", CHATPREFIX, (g_autoheal ? "enabled" : "disabled"));
 		PrintToChat(client, "%s - random crits are %s", CHATPREFIX, (g_crits ? "enabled" : "disabled"));
+		
+		PrintToChat(client, "%s Available commands:", CHATPREFIX);
+
+		if (g_HPboost) {
+			PrintToChat(client, "%s - say !hp to boost your health", CHATPREFIX);
+		}
+		
+		if (g_autoresupply) {
+			PrintToChat(client, "%s - say !ammo to toggle automatic ammo resupply", CHATPREFIX);
+		}
+		
+		if (g_teleport) {
+			PrintToChat(client, "%s - say !save or !s to save your current position", CHATPREFIX);
+			PrintToChat(client, "%s - say !load or !l to load your last saved position", CHATPREFIX);
+			PrintToChat(client, "%s - say !autoload to enable automatic loading of your last position", CHATPREFIX);
+		}
+		
+		if (!g_autoresupply && g_HPboost) {
+			PrintToChat(client, "%s - all client commands are currently disabled", CHATPREFIX);
+		}
 	}
 }
 
@@ -665,7 +811,9 @@ public Action:ChangeMap(Handle:timer) {
 purgeUserStatus(client) {
 	g_users_HPboost[client] = false;
 	g_users_autoresupply[client] = false;
+	g_users_autoload[client] = false;
 	purgeCP(client);
+	ResetPosition(client);
 }
 
 /** 
@@ -720,7 +868,20 @@ toggleAutoresupply(client) {
 }
 
 /** 
- * Convert Control Points to jump goals
+ * Toggles autoloading status for given client index
+ */
+toggleAutoload(client) {
+	if (g_users_autoload[client]) {
+		g_users_autoload[client] = false;
+		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic position loading disabled");
+	} else {
+		g_users_autoload[client] = true;
+		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic position loading enabled");
+	}
+}
+
+/** 
+ * Converts Control Points to jump goals
  * 
  * Ported from Jump Mode 1.4.1 by TheJCS 
  */
@@ -735,6 +896,69 @@ RemoveCPs() {
 		AcceptEntityInput(iterator, "SetTeamCanCap");
 		++g_CPnum;
 	}
+}
+
+/** 
+ * Teleports player to his saved position
+ * 
+ * Ported from SM_CheckpointSaver 1.03 by dataviruset
+ */
+LoadPosition(client) {
+	if (g_teleport) {
+		if (IsPlayerAlive(client)) {
+			if ((GetVectorDistance(g_users_savedPos[client], NULL_VECTOR) > 0.00)) {
+				TeleportEntity(client, g_users_savedPos[client], g_users_savedAngle[client], NULL_VECTOR);
+			} else {
+				EmitSoundToClient(client, "buttons/button8.wav");
+				PrintToChat(client, "%s You don't have a saved location.", CHATPREFIX);
+			}
+		} else {
+			EmitSoundToClient(client, "buttons/button8.wav");
+			PrintToChat(client, "%s You are not alive. Position loading is not possible at this moment.", CHATPREFIX);
+		}
+	}
+}
+
+SavePosition(client) {
+	if (g_teleport) {
+		if (IsPlayerAlive(client)) {
+			if (GetEntDataEnt2(client, FindSendPropOffs("CBasePlayer", "m_hGroundEntity")) != -1) {
+				GetClientAbsOrigin(client, g_users_savedPos[client]);
+				GetClientAbsAngles(client, g_users_savedAngle[client]);
+				EmitSoundToClient(client, "buttons/blip1.wav");
+				PrintToChat(client, "%s Your current position has been saved.", CHATPREFIX);
+			} else {
+				EmitSoundToClient(client, "buttons/button8.wav");
+				PrintToChat(client, "%s You are not standing on the ground. Position saving is not possible at this moment.", CHATPREFIX);
+			}
+		} else {
+			EmitSoundToClient(client, "buttons/button8.wav");
+			PrintToChat(client, "%s You are not alive. Position saving is not possible at this moment.", CHATPREFIX);
+		}
+	}
+}
+
+ResetPosition(client) {
+	g_users_savedPos[client] = NULL_VECTOR;
+	g_users_savedAngle[client] = NULL_VECTOR;
+}
+
+/** 
+ * Remove resupplies, directly ported from Jump Mode 1.4.1 by TheJCS
+ * 
+ * @param bool:newStatus true for enabling resupplies, false for disabling
+ */
+ToggleResupplies(bool:newStatus) {
+	new iRs = -1;
+	while ((iRs = FindEntityByClassname(iRs, "func_regenerate")) != -1)
+		AcceptEntityInput(iRs, (newStatus ? "Enable" : "Disable"));
+}
+
+/** 
+ * Hooks to trigger_teleport OnTrigger event
+ */
+hookTeleporters() {
+	HookEntityOutput("trigger_teleport", "OnStartTouch", callbackTeleportTriggered);
 }
 
 /** 
