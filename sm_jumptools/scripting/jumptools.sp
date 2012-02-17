@@ -217,6 +217,11 @@ new bool:g_users_autoload[MAXPLAYERS+1];
 new g_collisionGroup;
 
 /**
+ * Was help message shown (for each player)?
+ */
+new bool:g_users_helpShown[MAXPLAYERS+1];
+
+/**
  * CVAR handles
  */
 new Handle:g_jmp_version;
@@ -340,8 +345,6 @@ public OnConfigsExecuted() {
  */
 public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
 	purgeUserStatus(client);
-	new clientID = GetClientUserId(client);
-	CreateTimer(30.0, ShowHelp, clientID);
 	return true;
 }
 
@@ -555,6 +558,13 @@ public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 			LoadPosition(client);
 		}
 	}
+	
+	if (IsPlayerAlive(client)) {
+		if (!g_users_helpShown[client]) {
+			CreateTimer(3.0, ShowHelp, clientID);
+			g_users_helpShown[client] = true;
+		}
+	}
 }
 
 /** 
@@ -761,20 +771,13 @@ public Action:BroadcastPlugin(Handle:timer) {
 }
 
 /** 
- * Prints full help message in chat to specified userID
+ * Prints first part of the help message in chat to specified userID
  */
 public Action:ShowHelp(Handle:timer, any:clientID) {
 	new client = GetClientOfUserId(clientID);
 	
 	if (IsClientInGame(client)) {
 		PrintToChat(client, "%s This server is running Jump server toolbox %s", CHATPREFIX, g_pluginVersion);
-		
-		PrintToChat(client, "%s Status:", CHATPREFIX);
-		PrintToChat(client, "%s - instant respawning is %s", CHATPREFIX, (g_autorespawn ? "enabled" : "disabled"));
-		PrintToChat(client, "%s - automatic healing is %s", CHATPREFIX, (g_autoheal ? "enabled" : "disabled"));
-		PrintToChat(client, "%s - random crits are %s", CHATPREFIX, (g_crits ? "enabled" : "disabled"));
-		
-		PrintToChat(client, "%s Available commands:", CHATPREFIX);
 
 		if (g_HPboost) {
 			PrintToChat(client, "%s - say !hp to boost your health", CHATPREFIX);
@@ -812,6 +815,7 @@ purgeUserStatus(client) {
 	g_users_HPboost[client] = false;
 	g_users_autoresupply[client] = false;
 	g_users_autoload[client] = false;
+	g_users_helpShown[client] = false;
 	purgeCP(client);
 	ResetPosition(client);
 }
