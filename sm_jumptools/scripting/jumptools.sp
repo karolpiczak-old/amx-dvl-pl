@@ -202,14 +202,6 @@ new Float:g_users_savedPos[MAXPLAYERS+1][3];
 new Float:g_users_savedAngle[MAXPLAYERS+1][3];
 
 /**
- * Current autoload setting for each player
- * 
- * false = autoload disabled
- * true = autoload enabled
- */
-new bool:g_users_autoload[MAXPLAYERS+1];
-
-/**
  * Offset to m_CollisionGroup property
  * 
  * Internal use.
@@ -333,8 +325,6 @@ public OnConfigsExecuted() {
 	g_teleport = GetConVarBool(g_jmp_teleport);
 	
 	if (g_autoresupply && g_autoheal) toggleResupplies(false);
-	
-	if (g_teleport) hookTeleporters();
 
 	CreateTimer(30.0, BroadcastPlugin); // first broadcast hardcoded to 30 seconds after start
 }
@@ -554,9 +544,7 @@ public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 	}
 	
 	if (g_teleport) {
-		if (g_users_autoload[client]) {
 			loadPosition(client);
-		}
 	}
 	
 	if (IsPlayerAlive(client)) {
@@ -628,25 +616,6 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 	}
 }
 
-public CallbackTeleportTriggered(const String:output[], caller, activator, Float:delay) {
-	if (g_teleport && g_users_autoload[activator]) { 
-		new Handle:menu = CreateMenu(AutoloadMenu);
-		SetMenuTitle(menu, "Load last position?");
-		AddMenuItem(menu, "yes", "Yes");
-		AddMenuItem(menu, "no", "No");
-		SetMenuExitButton(menu, false);
-		DisplayMenu(menu, activator, 5);
-	}
-}
-
-public AutoloadMenu(Handle:menu, MenuAction:action, param1, param2) {
-	if (action == MenuAction_Select) {
-		if (param2 == 0) loadPosition(param1);
-	} else if (action == MenuAction_End) {
-		CloseHandle(menu);
-	}
-}
-
 /* *** Other functions ***************************************************** */
 /** 
  * Forces respawn for given userID
@@ -702,10 +671,9 @@ public Action:ResupplyClient(Handle:timer, any:clientID) {
  * Listens for:
  * - say !hp
  * - say !ammo
- * - say !jumphelp
+ * - say !help
  * - say !s and say !save
  * - say !l and say !load
- * - say !autoload
  * 
  * Echoing commands is suppressed.
  * 
@@ -737,7 +705,7 @@ public Action:CommandSay(client, args) {
 	} else if (strcmp(text[startidx], "!ammo", false) == 0) {
 		toggleAutoresupply(client);
 		handled = true;
-	} else if (strcmp(text[startidx], "!jumphelp", false) == 0) {
+	} else if (strcmp(text[startidx], "!help", false) == 0) {
 		new clientID = GetClientUserId(client);
 		CreateTimer(0.1, ShowHelp, clientID);
 		handled = true;
@@ -746,9 +714,6 @@ public Action:CommandSay(client, args) {
 		handled = true;
 	} else if ((strcmp(text[startidx], "!save", false) == 0) || (strcmp(text[startidx], "!s", false) == 0) ) {
 		savePosition(client);
-		handled = true;
-	} else if (strcmp(text[startidx], "!autoload", false) == 0) {
-		toggleAutoload(client);
 		handled = true;
 	}
 	
@@ -765,7 +730,7 @@ public Action:CommandSay(client, args) {
  * Broadcasts short help message to all players
  */
 public Action:BroadcastPlugin(Handle:timer) {
-	PrintToChatAll("%s Say !jumphelp to see the list of available commands", CHATPREFIX);
+	PrintToChatAll("%s Say !help to see the list of available commands", CHATPREFIX);
 	
 	CreateTimer(g_broadcastFreq, BroadcastPlugin);
 }
@@ -790,7 +755,6 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 		if (g_teleport) {
 			PrintToChat(client, "%s - say !save or !s to save your current position", CHATPREFIX);
 			PrintToChat(client, "%s - say !load or !l to load your last saved position", CHATPREFIX);
-			PrintToChat(client, "%s - say !autoload to enable automatic loading of your last position", CHATPREFIX);
 		}
 		
 		if (!g_autoresupply && g_HPboost) {
@@ -814,7 +778,6 @@ public Action:ChangeMap(Handle:timer) {
 purgeUserStatus(client) {
 	g_users_HPboost[client] = false;
 	g_users_autoresupply[client] = false;
-	g_users_autoload[client] = false;
 	g_users_helpShown[client] = false;
 	purgeCP(client);
 	resetPosition(client);
@@ -868,19 +831,6 @@ toggleAutoresupply(client) {
 		new clientID = GetClientUserId(client);
 		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic ammo resupply enabled");
 		CreateTimer(0.1, ResupplyClient, clientID);		
-	}
-}
-
-/** 
- * Toggles autoloading status for given client index
- */
-toggleAutoload(client) {
-	if (g_users_autoload[client]) {
-		g_users_autoload[client] = false;
-		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic position loading disabled");
-	} else {
-		g_users_autoload[client] = true;
-		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic position loading enabled");
 	}
 }
 
@@ -956,13 +906,6 @@ toggleResupplies(bool:newStatus) {
 	new iRs = -1;
 	while ((iRs = FindEntityByClassname(iRs, "func_regenerate")) != -1)
 		AcceptEntityInput(iRs, (newStatus ? "Enable" : "Disable"));
-}
-
-/** 
- * Hooks to trigger_teleport OnTrigger event
- */
-hookTeleporters() {
-	HookEntityOutput("trigger_teleport", "OnStartTouch", CallbackTeleportTriggered);
 }
 
 /** 
