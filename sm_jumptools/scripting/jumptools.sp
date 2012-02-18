@@ -321,7 +321,7 @@ public OnConfigsExecuted() {
 	}
 	
 	g_removecp = GetConVarBool(g_jmp_removecp);
-	if (g_removecp) RemoveCPs();
+	if (g_removecp) removeCPs();
 	
 	g_announce = GetConVarBool(g_jmp_announce);
 	
@@ -332,7 +332,7 @@ public OnConfigsExecuted() {
 	
 	g_teleport = GetConVarBool(g_jmp_teleport);
 	
-	if (g_autoresupply && g_autoheal) ToggleResupplies(false);
+	if (g_autoresupply && g_autoheal) toggleResupplies(false);
 	
 	if (g_teleport) hookTeleporters();
 
@@ -380,10 +380,10 @@ public OnAutorespawnChange(Handle:convar, const String:oldValue[], const String:
 public OnAutoresupplyChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
 	if(StringToInt(newValue) == 0) {
 		g_autoresupply = false;
-		ToggleResupplies(true);
+		toggleResupplies(true);
 	} else {
 		g_autoresupply = true;
-		if (g_autoheal) ToggleResupplies(false);
+		if (g_autoheal) toggleResupplies(false);
 	}
 }
 
@@ -393,10 +393,10 @@ public OnAutoresupplyChange(Handle:convar, const String:oldValue[], const String
 public OnAutohealChange(Handle:convar, const String:oldValue[], const String:newValue[]) {
 	if(StringToInt(newValue) == 0) {
 		g_autoheal = false;
-		ToggleResupplies(true);
+		toggleResupplies(true);
 	} else {
 		g_autoheal = true;
-		if (g_autoresupply) ToggleResupplies(false);
+		if (g_autoresupply) toggleResupplies(false);
 	}
 }
 
@@ -446,7 +446,7 @@ public OnRemoveCPChange(Handle:convar, const String:oldValue[], const String:new
 		ServerCommand("mp_restartgame 1");
 	} else {
 		g_removecp = true;
-		RemoveCPs();
+		removeCPs();
 	}
 }
 
@@ -519,9 +519,9 @@ public EventTeamplayRoundEnd(Handle:event, const String:name[], bool:dontBroadca
 public EventTeamplayRoundStart(Handle:event, const String:name[], bool:dontBroadcast) {
 	g_disableAutorespawn = false;
 	
-	if (g_removecp) RemoveCPs();
+	if (g_removecp) removeCPs();
 	
-	if (g_autoresupply && g_autoheal) ToggleResupplies(false);
+	if (g_autoresupply && g_autoheal) toggleResupplies(false);
 	
 	purgeCPAll();
 }
@@ -555,7 +555,7 @@ public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 	
 	if (g_teleport) {
 		if (g_users_autoload[client]) {
-			LoadPosition(client);
+			loadPosition(client);
 		}
 	}
 	
@@ -602,7 +602,7 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 				new String:playerName[64];
 
 				GetClientName(client, playerName, 64);
-				AttachParticle(client, "achieved");
+				attachParticle(client, "achieved");
 				EmitSoundToAll("misc/achievement_earned.wav");
 				
 				g_users_isCPTouched[CP][client] = true;
@@ -628,7 +628,7 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 	}
 }
 
-public callbackTeleportTriggered(const String:output[], caller, activator, Float:delay) {
+public CallbackTeleportTriggered(const String:output[], caller, activator, Float:delay) {
 	if (g_teleport && g_users_autoload[activator]) { 
 		new Handle:menu = CreateMenu(AutoloadMenu);
 		SetMenuTitle(menu, "Load last position?");
@@ -641,7 +641,7 @@ public callbackTeleportTriggered(const String:output[], caller, activator, Float
 
 public AutoloadMenu(Handle:menu, MenuAction:action, param1, param2) {
 	if (action == MenuAction_Select) {
-		if (param2 == 0) LoadPosition(param1);
+		if (param2 == 0) loadPosition(param1);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -742,10 +742,10 @@ public Action:CommandSay(client, args) {
 		CreateTimer(0.1, ShowHelp, clientID);
 		handled = true;
 	} else if ((strcmp(text[startidx], "!load", false) == 0) || (strcmp(text[startidx], "!l", false) == 0) ) {
-		LoadPosition(client);
+		loadPosition(client);
 		handled = true;
 	} else if ((strcmp(text[startidx], "!save", false) == 0) || (strcmp(text[startidx], "!s", false) == 0) ) {
-		SavePosition(client);
+		savePosition(client);
 		handled = true;
 	} else if (strcmp(text[startidx], "!autoload", false) == 0) {
 		toggleAutoload(client);
@@ -817,7 +817,7 @@ purgeUserStatus(client) {
 	g_users_autoload[client] = false;
 	g_users_helpShown[client] = false;
 	purgeCP(client);
-	ResetPosition(client);
+	resetPosition(client);
 }
 
 /** 
@@ -889,7 +889,7 @@ toggleAutoload(client) {
  * 
  * Ported from Jump Mode 1.4.1 by TheJCS 
  */
-RemoveCPs() {
+removeCPs() {
 	new iterator = -1;
 	g_CPnum = 0;
 	
@@ -907,7 +907,7 @@ RemoveCPs() {
  * 
  * Ported from SM_CheckpointSaver 1.03 by dataviruset
  */
-LoadPosition(client) {
+loadPosition(client) {
 	if (g_teleport) {
 		if (IsPlayerAlive(client)) {
 			if ((GetVectorDistance(g_users_savedPos[client], NULL_VECTOR) > 0.00)) {
@@ -923,7 +923,7 @@ LoadPosition(client) {
 	}
 }
 
-SavePosition(client) {
+savePosition(client) {
 	if (g_teleport) {
 		if (IsPlayerAlive(client)) {
 			if (GetEntDataEnt2(client, FindSendPropOffs("CBasePlayer", "m_hGroundEntity")) != -1) {
@@ -942,7 +942,7 @@ SavePosition(client) {
 	}
 }
 
-ResetPosition(client) {
+resetPosition(client) {
 	g_users_savedPos[client] = NULL_VECTOR;
 	g_users_savedAngle[client] = NULL_VECTOR;
 }
@@ -952,7 +952,7 @@ ResetPosition(client) {
  * 
  * @param bool:newStatus true for enabling resupplies, false for disabling
  */
-ToggleResupplies(bool:newStatus) {
+toggleResupplies(bool:newStatus) {
 	new iRs = -1;
 	while ((iRs = FindEntityByClassname(iRs, "func_regenerate")) != -1)
 		AcceptEntityInput(iRs, (newStatus ? "Enable" : "Disable"));
@@ -962,13 +962,13 @@ ToggleResupplies(bool:newStatus) {
  * Hooks to trigger_teleport OnTrigger event
  */
 hookTeleporters() {
-	HookEntityOutput("trigger_teleport", "OnStartTouch", callbackTeleportTriggered);
+	HookEntityOutput("trigger_teleport", "OnStartTouch", CallbackTeleportTriggered);
 }
 
 /** 
  * Particle effects directly ported from Jump Mode 1.4.1 by TheJCS 
  */
-AttachParticle(ent, String:particleType[]) {
+attachParticle(ent, String:particleType[]) {
 	new particle = CreateEntityByName("info_particle_system");
 	
 	new String:tName[128];
