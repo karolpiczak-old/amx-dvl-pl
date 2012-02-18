@@ -1,7 +1,7 @@
 /* *** SourceMod script **************************************************** *
  * Jump server toolbox                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 1.1.0 (2012-02-17)                                               *
+ * Version: 1.2.0 (2012-02-18)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *  A bunch of tools useful when running Jump servers:                       *
@@ -11,6 +11,7 @@
  *  - boosting player HP (per user)                                          *
  *  - disabling crits                                                        *
  *  - converting Control Points to jump goals (with completion announcing)   *
+ *  - persistent saving & loading position per map/team/class                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright (c) 2012 Eravinor     /     eravinor@secforce.org               *
  * Written for SkillPoint          /     http://www.skillpoint.pl            *
@@ -19,6 +20,9 @@
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2012-02-18 v.1.2.0                                                      *
+ *   - Added save persistency (SQLite)                                       *
+ *   - Changed autoload behaviour                                            *
  * + 2012-02-17 v.1.1.0                                                      *
  *   - Ported location saving & loading functionality                        * 
  * + 2012-02-11 v.1.0.1                                                      *
@@ -85,7 +89,7 @@
 /**
  * Plugin version
  */
-new String:g_pluginVersion[] = "1.1.0";
+new String:g_pluginVersion[] = "1.2.0";
 
 /**
  * Is instant respawn enabled?
@@ -201,6 +205,11 @@ new Float:g_users_savedPos[MAXPLAYERS+1][3];
  */
 new Float:g_users_savedAngle[MAXPLAYERS+1][3];
 
+/** 
+ * Cached SteamID for given client
+ */
+new String:g_users_SteamID[MAXPLAYERS+1][32];
+
 /**
  * Offset to m_CollisionGroup property
  * 
@@ -212,6 +221,16 @@ new g_collisionGroup;
  * Was help message shown (for each player)?
  */
 new bool:g_users_helpShown[MAXPLAYERS+1];
+
+/** 
+ * Database handle
+ */
+new Handle:g_db;
+
+/** 
+ * Name of current database table
+ */
+new String:g_table[128];
 
 /**
  * CVAR handles
@@ -283,6 +302,8 @@ public OnPluginStart() {
 	HookEvent("player_spawn", EventPlayerSpawn);
 	HookEvent("player_hurt", EventPlayerHurt);
 	HookEvent("controlpoint_starttouch", EventCPTouched);
+	HookEvent("player_team", EventPlayerChangeTeam);
+	HookEvent("player_changeclass", EventPlayerChangeClass);
 	
 	RegConsoleCmd("say", CommandSay);
 	RegConsoleCmd("say_team", CommandSay);
@@ -291,6 +312,9 @@ public OnPluginStart() {
 	if (g_collisionGroup == -1) {
 		SetFailState("[Jump tools] Internal error in \"no block\" module.");
 	}
+	
+	new String:errorSQL[128];
+	g_db = SQLite_UseDatabase("jumptools", errorSQL, sizeof(errorSQL));
 }
 
 /** 
@@ -326,6 +350,25 @@ public OnConfigsExecuted() {
 	
 	if (g_autoresupply && g_autoheal) toggleResupplies(false);
 
+	new String:mapName[64];
+	GetCurrentMap(mapName, sizeof(mapName));
+	
+	for (new i = 0; i < sizeof(mapName); ++i) {
+		if (mapName[i] == 0) break;
+		if (!IsCharAlpha(mapName[i]) && !IsCharNumeric(mapName[i]))
+			mapName[i] = '_';
+	}
+	
+	strcopy(g_table, sizeof(g_table), mapName);
+	
+	new String:query[512];
+	Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS %s (SteamID CHAR(32), Team INTEGER, Class INTEGER, \
+		PosX REAL, PosY REAL, PosZ REAL, AngX REAL, AngY REAL, AngZ REAL, PRIMARY KEY (SteamID, Team, Class))", g_table);
+	SQL_FastQuery(g_db, query);
+	
+	Format(query, sizeof(query), "CREATE INDEX IF NOT EXISTS SteamID ON %s (SteamID)", g_table);
+	SQL_FastQuery(g_db, query);
+	
 	CreateTimer(30.0, BroadcastPlugin); // first broadcast hardcoded to 30 seconds after start
 }
  
@@ -338,15 +381,25 @@ public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
 	return true;
 }
 
+
+/** 
+ * Caches user's SteamID and restores his saves from database
+ */
+public OnClientAuthorized(client, const String:clientSteamID[]) {
+	strcopy(g_users_SteamID[client], sizeof(g_users_SteamID[]), clientSteamID);
+	restoreSave(client);
+}
+
 /**
  * Purges client status on disconnection
  */
 public OnClientDisconnect(client) {
 	purgeUserStatus(client);
+	g_users_SteamID[client] = "";
 }
 
 /** 
- * 
+ * Precaches media
  */
 public OnMapStart() {
 	PrecacheSound("misc/achievement_earned.wav");
@@ -529,25 +582,31 @@ public EventPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
 }
 
 /** 
- * Boosts player's health on spawn if HP boost is enabled
+ * Catches user spawn event
+ * 
+ * - Boosts player's health on spawn if HP boost is enabled
+ * - Set proper no blocking collision group
+ * - Restores saved position and teleports player
+ * - Shows help if just connected
  */
 public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 	new clientID = GetEventInt(event, "userid");
 	new client = GetClientOfUserId(clientID);
 
-	if (g_HPboost && g_users_HPboost[client]) {
-		CreateTimer(0.1, BoostClient, clientID);
-	}
-	
-	if (g_noblock) {
-		SetEntData(client, g_collisionGroup, 2, 4, true);
-	}
-	
-	if (g_teleport) {
-			loadPosition(client);
-	}
-	
 	if (IsPlayerAlive(client)) {
+		if (g_HPboost && g_users_HPboost[client]) {
+			CreateTimer(0.1, BoostClient, clientID);
+		}
+		
+		if (g_noblock) {
+			SetEntData(client, g_collisionGroup, 2, 4, true);
+		}
+		
+		if (g_teleport) {
+			restoreSave(client);
+			loadPosition(client);
+		}
+	
 		if (!g_users_helpShown[client]) {
 			CreateTimer(3.0, ShowHelp, clientID);
 			g_users_helpShown[client] = true;
@@ -571,6 +630,26 @@ public EventPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 	if (g_autoresupply && g_users_autoresupply[client]) {
 		CreateTimer(0.1, ResupplyClient, clientID);
 	}
+}
+
+/** 
+ * Saves last position before class change
+ */
+public EventPlayerChangeClass(Handle:event, const String:name[], bool:dontBroadcast) {
+	new clientID = GetEventInt(event, "userid");
+	new client = GetClientOfUserId(clientID);
+	
+	savePosition(client);
+}
+
+/** 
+ * Saves last position before team change
+ */
+public EventPlayerChangeTeam(Handle:event, const String:name[], bool:dontBroadcast) {
+	new clientID = GetEventInt(event, "userid");
+	new client = GetClientOfUserId(clientID);
+	
+	savePosition(client);
 }
 
 /** 
@@ -671,9 +750,10 @@ public Action:ResupplyClient(Handle:timer, any:clientID) {
  * Listens for:
  * - say !hp
  * - say !ammo
- * - say !help
+ * - say !jumphelp
  * - say !s and say !save
  * - say !l and say !load
+ * - say !reset
  * 
  * Echoing commands is suppressed.
  * 
@@ -705,7 +785,7 @@ public Action:CommandSay(client, args) {
 	} else if (strcmp(text[startidx], "!ammo", false) == 0) {
 		toggleAutoresupply(client);
 		handled = true;
-	} else if (strcmp(text[startidx], "!help", false) == 0) {
+	} else if (strcmp(text[startidx], "!jumphelp", false) == 0) {
 		new clientID = GetClientUserId(client);
 		CreateTimer(0.1, ShowHelp, clientID);
 		handled = true;
@@ -714,6 +794,9 @@ public Action:CommandSay(client, args) {
 		handled = true;
 	} else if ((strcmp(text[startidx], "!save", false) == 0) || (strcmp(text[startidx], "!s", false) == 0) ) {
 		savePosition(client);
+		handled = true;
+	} else if ((strcmp(text[startidx], "!reset", false) == 0)) {
+		resetPosition(client);
 		handled = true;
 	}
 	
@@ -730,7 +813,7 @@ public Action:CommandSay(client, args) {
  * Broadcasts short help message to all players
  */
 public Action:BroadcastPlugin(Handle:timer) {
-	PrintToChatAll("%s Say !help to see the list of available commands", CHATPREFIX);
+	PrintToChatAll("%s Say !jumphelp to see the list of available commands", CHATPREFIX);
 	
 	CreateTimer(g_broadcastFreq, BroadcastPlugin);
 }
@@ -755,6 +838,7 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 		if (g_teleport) {
 			PrintToChat(client, "%s - say !save or !s to save your current position", CHATPREFIX);
 			PrintToChat(client, "%s - say !load or !l to load your last saved position", CHATPREFIX);
+			PrintToChat(client, "%s - say !reset to erase your save and start again", CHATPREFIX);
 		}
 		
 		if (!g_autoresupply && g_HPboost) {
@@ -779,8 +863,9 @@ purgeUserStatus(client) {
 	g_users_HPboost[client] = false;
 	g_users_autoresupply[client] = false;
 	g_users_helpShown[client] = false;
+	g_users_savedPos[client] = NULL_VECTOR;
+	g_users_savedAngle[client] = NULL_VECTOR;
 	purgeCP(client);
-	resetPosition(client);
 }
 
 /** 
@@ -864,15 +949,18 @@ loadPosition(client) {
 				TeleportEntity(client, g_users_savedPos[client], g_users_savedAngle[client], NULL_VECTOR);
 			} else {
 				EmitSoundToClient(client, "buttons/button8.wav");
-				PrintToChat(client, "%s You don't have a saved location.", CHATPREFIX);
+				PrintToChat(client, "%s You don't have a saved location for this team/class on this map.", CHATPREFIX);
 			}
-		} else {
-			EmitSoundToClient(client, "buttons/button8.wav");
-			PrintToChat(client, "%s You are not alive. Position loading is not possible at this moment.", CHATPREFIX);
 		}
 	}
 }
 
+
+/** 
+ * Saves player position to local cache and writes to database
+ * 
+ * Possible optimization with deferred writes to database.
+ */
 savePosition(client) {
 	if (g_teleport) {
 		if (IsPlayerAlive(client)) {
@@ -880,21 +968,112 @@ savePosition(client) {
 				GetClientAbsOrigin(client, g_users_savedPos[client]);
 				GetClientAbsAngles(client, g_users_savedAngle[client]);
 				EmitSoundToClient(client, "buttons/blip1.wav");
-				PrintToChat(client, "%s Your current position has been saved.", CHATPREFIX);
-			} else {
-				EmitSoundToClient(client, "buttons/button8.wav");
-				PrintToChat(client, "%s You are not standing on the ground. Position saving is not possible at this moment.", CHATPREFIX);
+				
+				writeSave(client);
+				
+				PrintToChat(client, "%s Your position has been saved.", CHATPREFIX);
 			}
-		} else {
-			EmitSoundToClient(client, "buttons/button8.wav");
-			PrintToChat(client, "%s You are not alive. Position saving is not possible at this moment.", CHATPREFIX);
 		}
 	}
 }
 
+
+/** 
+ * Inserts player position into the database
+ */
+writeSave(client) {
+	new Float:posX = g_users_savedPos[client][0];
+	new Float:posY = g_users_savedPos[client][1];
+	new Float:posZ = g_users_savedPos[client][2];
+	
+	new Float:angX = g_users_savedAngle[client][0];
+	new Float:angY = g_users_savedAngle[client][1];
+	new Float:angZ = g_users_savedAngle[client][2];
+	
+	if (IsClientConnected(client)) {
+		new team = GetClientTeam(client);
+		new TFClassType:class = TF2_GetPlayerClass(client);
+		
+		new String:query[512];
+		Format(query, sizeof(query), "INSERT OR REPLACE INTO %s (SteamID, Team, Class, PosX, PosY, PosZ, AngX, AngY, AngZ) \
+			VALUES('%s', %d, %d, %f, %f, %f, %f, %f, %f)", g_table, g_users_SteamID[client], team, class, posX, posY, posZ, angX, angY, angZ);
+		SQL_FastQuery(g_db, query);
+	}
+}
+
+/**
+ * Deletes player position from database 
+ */
+eraseSave(client) {
+	if (IsClientConnected(client)) {
+		new team = GetClientTeam(client);
+		new TFClassType:class = TF2_GetPlayerClass(client);
+		
+		new String:query[512];
+		Format(query, sizeof(query), "DELETE FROM %s WHERE SteamID = '%s' AND Team = %d AND Class = %d", g_table, g_users_SteamID[client], team, class);
+		SQL_FastQuery(g_db, query);
+	}
+}
+
+/** 
+ * Loads player position from the database
+ */
+restoreSave(client) {
+	new Float:posX;
+	new Float:posY;
+	new Float:posZ;
+	
+	new Float:angX;
+	new Float:angY;
+	new Float:angZ;
+	
+	if (IsClientConnected(client)) {
+		new team = GetClientTeam(client);
+		new TFClassType:class = TF2_GetPlayerClass(client);
+		
+		new String:query[512];
+		Format(query, sizeof(query), "SELECT * FROM %s WHERE SteamID = '%s' AND Team = %d AND Class = %d", g_table, g_users_SteamID[client], team, class);
+		
+		new Handle:result = SQL_Query(g_db, query);
+		
+		if (result != INVALID_HANDLE) {
+			if (SQL_FetchRow(result)) {
+				posX = SQL_FetchFloat(result, 3);
+				posY = SQL_FetchFloat(result, 4);
+				posZ = SQL_FetchFloat(result, 5);
+				angX = SQL_FetchFloat(result, 6);
+				angY = SQL_FetchFloat(result, 7);
+				angZ = SQL_FetchFloat(result, 8);
+				
+				g_users_savedPos[client][0] = posX;
+				g_users_savedPos[client][1] = posY;
+				g_users_savedPos[client][2] = posZ;
+				
+				g_users_savedAngle[client][0] = angX;
+				g_users_savedAngle[client][1] = angY;
+				g_users_savedAngle[client][2] = angZ;
+			} else {
+				g_users_savedPos[client] = NULL_VECTOR;
+				g_users_savedAngle[client] = NULL_VECTOR;
+			}
+		}
+		
+		CloseHandle(result);
+	}
+}
+
+/** 
+ * Resets player position (teleport and erase save)
+ */
 resetPosition(client) {
 	g_users_savedPos[client] = NULL_VECTOR;
 	g_users_savedAngle[client] = NULL_VECTOR;
+	
+	eraseSave(client);
+	
+	PrintToChat(client, "%s Your saved position has been deleted.", CHATPREFIX);
+	
+	TF2_RespawnPlayer(client);
 }
 
 /** 
