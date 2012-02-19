@@ -856,8 +856,11 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
  */
 public Action:ChangeMap(Handle:timer) {
 	new String:mapName[64];
+	new String:reason[128];
+	
 	GetNextMap(mapName, 64);
-	ForceChangeLevel(mapName, "%T", "Auto changelevel reason", LANG_SERVER);
+	Format(reason, sizeof(reason), "%T", "Auto changelevel reason", LANG_SERVER);
+	ForceChangeLevel(mapName, reason);
 }
 
 /** 
