@@ -20,11 +20,11 @@
 	}
 	
 	"Say !hp" {
-		"pl"		"- powiedz !hp, aby zwiększyć liczbę punktów życia"
+		"pl"		"- powiedz !hp, aby przełączyć zwiększanie liczby punktów życia"
 	}
 	
 	"Say !ammo" {
-		"pl"		"- powiedz !ammo, aby włączyć automatyczne uzupełnianie amunicji"
+		"pl"		"- powiedz !ammo, aby przełączyć automatyczne uzupełnianie amunicji"
 	}
 	
 	"Say !save" {

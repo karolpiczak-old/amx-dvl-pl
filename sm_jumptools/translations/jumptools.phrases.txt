@@ -24,7 +24,7 @@
 	}
 	
 	"Say !hp" {
-		"en"		"- say !hp to boost your health"
+		"en"		"- say !hp to toggle health boosting"
 	}
 	
 	"Say !ammo" {

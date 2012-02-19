@@ -392,6 +392,16 @@ public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
 public OnClientAuthorized(client, const String:clientSteamID[]) {
 	strcopy(g_users_SteamID[client], sizeof(g_users_SteamID[]), clientSteamID);
 	restoreSave(client);
+	
+	
+}
+
+/** 
+ * Enables default settings on connect
+ */
+public OnClientPutInServer(client) {
+	g_users_HPboost[client] = true;
+	g_users_autoresupply[client] = true;
 }
 
 /**
