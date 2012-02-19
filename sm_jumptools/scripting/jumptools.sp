@@ -277,7 +277,7 @@ public OnPluginStart() {
 	g_jmp_autoheal = CreateConVar("jmp_autoheal", "1", "Enable automatic healing", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_hpboost = CreateConVar("jmp_hpboost", "1", "Enable HP boosting with say \"!hp\"", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_crits = CreateConVar("jmp_crits", "0", "Enable random crits", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	g_jmp_broadcast = CreateConVar("jmp_broadcast", "120", "Plugin broadcast frequency in seconds", FCVAR_PLUGIN, true, 30.0, true, 1200.0);
+	g_jmp_broadcast = CreateConVar("jmp_broadcast", "120.0", "Plugin broadcast frequency in seconds", FCVAR_PLUGIN, true, 30.0, true, 1200.0);
 	g_jmp_removecp = CreateConVar("jmp_removecp", "1", "Remove Control Points from the map", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_announce = CreateConVar("jmp_announce", "1", "Announce when players reach Control Points", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_jmp_changetime = CreateConVar("jmp_changetime", "10.0", "Time to map change when last Control Point is reached (in seconds)", FCVAR_PLUGIN, true, 0.0, true, 1200.0);
@@ -387,21 +387,19 @@ public bool:OnClientConnect(client, String:rejectmsg[], maxlen) {
 
 
 /** 
- * Caches user's SteamID and restores his saves from database
+ * Caches user's SteamID
  */
 public OnClientAuthorized(client, const String:clientSteamID[]) {
 	strcopy(g_users_SteamID[client], sizeof(g_users_SteamID[]), clientSteamID);
-	restoreSave(client);
-	
-	
 }
 
 /** 
- * Enables default settings on connect
+ * Enables default settings on connect and restores last save from database
  */
 public OnClientPutInServer(client) {
 	g_users_HPboost[client] = true;
 	g_users_autoresupply[client] = true;
+	restoreSave(client);
 }
 
 /**
@@ -827,7 +825,7 @@ public Action:CommandSay(client, args) {
  * Broadcasts short help message to all players
  */
 public Action:BroadcastPlugin(Handle:timer) {
-	PrintToChatAll("%s %t", "Say !jumphelp", CHATPREFIX);
+	PrintToChatAll("%s %t", CHATPREFIX, "Say !jumpmenu");
 	
 	CreateTimer(g_broadcastFreq, BroadcastPlugin);
 }
@@ -1044,7 +1042,7 @@ restoreSave(client) {
 	new Float:angY;
 	new Float:angZ;
 	
-	if (IsClientConnected(client)) {
+	if (IsClientInGame(client)) {
 		new team = GetClientTeam(client);
 		new TFClassType:class = TF2_GetPlayerClass(client);
 		
