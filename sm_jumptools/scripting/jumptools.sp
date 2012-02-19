@@ -268,7 +268,7 @@ public Plugin:myinfo = {
  * Plugin initialisation (one-time)
  */
 public OnPluginStart() {
-	LoadTranslations("jumptools");
+	LoadTranslations("jumptools.phrases");
 	
 	g_jmp_version = CreateConVar("jmp_version", g_pluginVersion, "Jump server toolbox version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	
