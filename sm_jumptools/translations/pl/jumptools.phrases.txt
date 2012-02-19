@@ -11,36 +11,40 @@
 		"pl"		"Bieżąca mapa zostanie zmieniona na {1} w ciągu {2} sekund!"
 	}
 	
-	"Say !jumphelp" {
-		"pl"		"Powiedz !jumphelp, aby zobaczyć listę dostępnych komend"
+	"Say !jumpmenu" {
+		"pl"		"Powiedz !jumpmenu, aby zobaczyć listę dostępnych komend."
 	}
 	
 	"Running Jump server toolbox" {
-		"pl"		"Ten serwer korzysta z pluginu Jump server toolbox {1}"
+		"pl"		"Jump server toolbox {1} (!jumpmenu)"
 	}
 	
 	"Say !hp" {
-		"pl"		"- powiedz !hp, aby przełączyć zwiększanie liczby punktów życia"
+		"pl"		"Przełącz zwiększenie liczby punktów życia (powiedz !hp)"
 	}
 	
 	"Say !ammo" {
-		"pl"		"- powiedz !ammo, aby przełączyć automatyczne uzupełnianie amunicji"
+		"pl"		"Przełącz automatyczne uzupełnianie amunicji (powiedz !ammo)"
 	}
 	
 	"Say !save" {
-		"pl"		"- powiedz !save lub !s, aby zapisać swoją pozycję"	
+		"pl"		"Zapisz swoją pozycję (powiedz !save lub !s)"	
 	}
 	
 	"Say !load" {
-		"pl"		"- powiedz !load lub !l, aby wczytać swoją pozycję"		
+		"pl"		"Wczytaj swoją pozycję (powiedz !load lub !l)"		
 	}
 	
 	"Say !reset" {
-		"pl"		"- powiedz !reset, aby usunąć zapis pozycji i wrócić do punktu startowego"		
+		"pl"		"Usuń zapis pozycji i wróć do punktu startowego (powiedz !reset)"		
+	}
+	
+	"Say !panel" {
+		"pl"		"Wyświetl menu szybkiego zapisu/wczytania (powiedz !panel)"		
 	}
 	
 	"Client commands disabled" {
-		"pl"		"- wszystkie komendy klienta są w tej chwili wyłączone"		
+		"pl"		"Wszystkie komendy klienta są w tej chwili wyłączone"		
 	}
 	
 	"Auto changelevel reason" {
@@ -48,19 +52,19 @@
 	}
 	
 	"HP boost disabled" {
-		"pl"		"Zwiększenie punktów życia zostało wyłączone"
+		"pl"		"Zwiększenie punktów życia zostało wyłączone."
 	}
 	
 	"HP boost enabled" {
-		"pl"		"Zwiększenie punktów życia zostało włączone"
+		"pl"		"Zwiększenie punktów życia zostało włączone."
 	}
 	
 	"Automatic ammo resupply disabled" {
-		"pl"		"Automatyczne uzupełnianie amunicji zostało wyłączone"
+		"pl"		"Automatyczne uzupełnianie amunicji zostało wyłączone."
 	}
 	
 	"Automatic ammo resupply enabled" {
-		"pl"		"Automatyczne uzupełnianie amunicji zostało włączone"
+		"pl"		"Automatyczne uzupełnianie amunicji zostało włączone."
 	}
 	
 	"No save" {
@@ -73,5 +77,17 @@
 	
 	"Position deleted" {
 		"pl"		"Twój zapis pozycji został usunięty."
+	}
+	
+	"Quick access" {
+		"pl"		"Szybki dostęp:"
+	}
+	
+	"Save" {
+		"pl"		"Zapisz"
+	}
+	
+	"Load" {
+		"pl"		"Wczytaj"
 	}
 }

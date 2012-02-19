@@ -1,7 +1,7 @@
 /* *** SourceMod script **************************************************** *
  * Jump server toolbox                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 1.2.1 (2012-02-18)                                               *
+ * Version: 1.3.0 (2012-02-19)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *  A bunch of tools useful when running Jump servers:                       *
@@ -20,6 +20,8 @@
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2012-02-19 v.1.3.0                                                      *
+ *   - Added menus                                                           *
  * + 2012-02-18 v.1.2.1                                                      *
  *   - Added initial translation                                             *
  * + 2012-02-18 v.1.2.0                                                      *
@@ -91,7 +93,7 @@
 /**
  * Plugin version
  */
-new String:g_pluginVersion[] = "1.2.1";
+new String:g_pluginVersion[] = "1.3.0";
 
 /**
  * Is instant respawn enabled?
@@ -620,7 +622,7 @@ public EventPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
 		}
 	
 		if (!g_users_helpShown[client]) {
-			CreateTimer(3.0, ShowHelp, clientID);
+			CreateTimer(3.0, ShowHelpWrapper, clientID);
 			g_users_helpShown[client] = true;
 		}
 	}
@@ -762,10 +764,11 @@ public Action:ResupplyClient(Handle:timer, any:clientID) {
  * Listens for:
  * - say !hp
  * - say !ammo
- * - say !jumphelp
+ * - say !jumpmenu
  * - say !s and say !save
  * - say !l and say !load
  * - say !reset
+ * - say !panel
  * 
  * Echoing commands is suppressed.
  * 
@@ -797,9 +800,8 @@ public Action:CommandSay(client, args) {
 	} else if (strcmp(text[startidx], "!ammo", false) == 0) {
 		toggleAutoresupply(client);
 		handled = true;
-	} else if (strcmp(text[startidx], "!jumphelp", false) == 0) {
-		new clientID = GetClientUserId(client);
-		CreateTimer(0.1, ShowHelp, clientID);
+	} else if (strcmp(text[startidx], "!jumpmenu", false) == 0) {
+		showHelp(client);
 		handled = true;
 	} else if ((strcmp(text[startidx], "!load", false) == 0) || (strcmp(text[startidx], "!l", false) == 0) ) {
 		loadPosition(client);
@@ -809,6 +811,9 @@ public Action:CommandSay(client, args) {
 		handled = true;
 	} else if ((strcmp(text[startidx], "!reset", false) == 0)) {
 		resetPosition(client);
+		handled = true;
+	} else if ((strcmp(text[startidx], "!panel", false) == 0)) {
+		showPanel(client);
 		handled = true;
 	}
 	
@@ -831,31 +836,127 @@ public Action:BroadcastPlugin(Handle:timer) {
 }
 
 /** 
- * Prints first part of the help message in chat to specified userID
+ * A timed wrapper for showHelp()
  */
-public Action:ShowHelp(Handle:timer, any:clientID) {
+public Action:ShowHelpWrapper(Handle:timer, any:clientID) {
 	new client = GetClientOfUserId(clientID);
-	
+	showHelp(client);
+}
+
+/** 
+ * Shows help menu to the specified client
+ */
+showHelp(client) {
 	if (IsClientInGame(client)) {
-		PrintToChat(client, "%s %t", CHATPREFIX, "Running Jump server toolbox", g_pluginVersion);
+		new String:item[128];
+		
+		new Handle:menu = CreateMenu(HelpMenu);
+		Format(item, sizeof(item), "%T", "Running Jump server toolbox", client, g_pluginVersion);
+		SetMenuTitle(menu, item);
 
 		if (g_HPboost) {
-			PrintToChat(client, "%s %t", CHATPREFIX, "Say !hp");
+			Format(item, sizeof(item), "%T", "Say !hp", client);
+			AddMenuItem(menu, "hpboost", item);
 		}
-		
+				
 		if (g_autoresupply) {
-			PrintToChat(client, "%s %t", CHATPREFIX, "Say !ammo");
+			Format(item, sizeof(item), "%T", "Say !ammo", client);
+			AddMenuItem(menu, "ammo", item);
 		}
 		
 		if (g_teleport) {
-			PrintToChat(client, "%s %t", CHATPREFIX, "Say !save");
-			PrintToChat(client, "%s %t", CHATPREFIX, "Say !load");
-			PrintToChat(client, "%s %t", CHATPREFIX, "Say !reset");
+			Format(item, sizeof(item), "%T", "Say !save", client);
+			AddMenuItem(menu, "save", item);
+			Format(item, sizeof(item), "%T", "Say !load", client);
+			AddMenuItem(menu, "load", item);
+			Format(item, sizeof(item), "%T", "Say !reset", client);
+			AddMenuItem(menu, "reset", item);
+			Format(item, sizeof(item), "%T", "Say !panel", client);
+			AddMenuItem(menu, "panel", item);
 		}
 		
-		if (!g_autoresupply && g_HPboost) {
-			PrintToChat(client, "%s %t", CHATPREFIX, "Client commands disabled");
+		if ( ! g_autoresupply && ! g_HPboost && ! g_teleport) {
+			Format(item, sizeof(item), "%T", "Client commands disabled", client);
+			AddMenuItem(menu, "disabled", item);
 		}
+		
+		SetMenuExitButton(menu, true);
+		DisplayMenu(menu, client, 0);
+	}
+}
+
+/** 
+ * Handles Help Menu actions
+ */
+public HelpMenu(Handle:menu, MenuAction:action, param1, param2) {
+	if (action == MenuAction_Select) {
+		new bool:close = false;
+		
+		new String:info[32];
+		new bool:found = GetMenuItem(menu, param2, info, sizeof(info));
+		
+		if (found) {
+			if (StrEqual("hpboost", info)) {
+				toggleHPboost(param1);
+			} else if (StrEqual("ammo", info)) {
+				toggleAutoresupply(param1);
+			} else if (StrEqual("save", info)) {
+				savePosition(param1);
+			} else if (StrEqual("load", info)) {
+				loadPosition(param1);
+			} else if (StrEqual("reset", info)) {
+				resetPosition(param1);
+			} else if (StrEqual("panel", info)) {
+				close = true;
+				showPanel(param1);
+			}
+		}
+		
+		if ( ! close) {
+			showHelp(param1);
+		}
+	} else if (action == MenuAction_End) {
+		CloseHandle(menu);
+	}
+}
+
+/** 
+ * Displays quick save/load menu
+ */
+showPanel(client) {
+	new String:save[128];
+	new String:load[128];
+	new String:title[128];
+	
+	Format(save, sizeof(save), "%T", "Save", client);
+	Format(load, sizeof(load), "%T", "Load", client);
+	Format(title, sizeof(title), "%T", "Quick access", client);
+	
+	new Handle:menu = CreateMenu(QuickMenu);
+	SetMenuTitle(menu, title);
+	AddMenuItem(menu, "save", save);
+	AddMenuItem(menu, "load", load);
+	SetMenuExitButton(menu, true);
+	DisplayMenu(menu, client, 0);
+}
+
+/** 
+ * Handles quick access menu actions
+ */
+public QuickMenu(Handle:menu, MenuAction:action, param1, param2) {
+	if (action == MenuAction_Select) {
+		switch (param2) {
+			case 0: {
+				savePosition(param1);
+			}
+			case 1: {
+				loadPosition(param1);
+			}
+		}
+		
+		showPanel(param1);
+	} else if (action == MenuAction_End) {
+		CloseHandle(menu);
 	}
 }
 

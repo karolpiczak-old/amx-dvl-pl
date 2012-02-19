@@ -14,37 +14,41 @@
 		"en"		"Current map will be changed to {1} in {2} seconds!"
 	}
 	
-	"Say !jumphelp" {
-		"en"		"Say !jumphelp to see the list of available commands"
+	"Say !jumpmenu" {
+		"en"		"Say !jumpmenu to see the list of available commands."
 	}
 	
 	"Running Jump server toolbox" {
 		"#format"	"{1:s}"
-		"en"		"This server is running Jump server toolbox {1}"
+		"en"		"Jump server toolbox {1} (!jumpmenu)"
 	}
 	
 	"Say !hp" {
-		"en"		"- say !hp to toggle health boosting"
+		"en"		"Toggle health boosting (also by saying !hp)"
 	}
 	
 	"Say !ammo" {
-		"en"		"- say !ammo to toggle automatic ammo resupply"
+		"en"		"Toggle automatic ammo resupply (also by saying !ammo)"
 	}
 	
 	"Say !save" {
-		"en"		"- say !save or !s to save your current position"	
+		"en"		"Save your current position (also by saying !save or !s)"	
 	}
 	
 	"Say !load" {
-		"en"		"- say !load or !l to load your last saved position"		
+		"en"		"Load your last saved position (also by saying !load or !l)"		
 	}
 	
 	"Say !reset" {
-		"en"		"- say !reset to erase your save and start again"		
+		"en"		"Erase your save and start again (also by saying !reset)"		
+	}
+	
+	"Say !panel" {
+		"en"		"Show a quicksave/quickload menu (also by saying !panel)"		
 	}
 	
 	"Client commands disabled" {
-		"en"		"- all client commands are currently disabled"		
+		"en"		"All client commands are currently disabled"		
 	}
 	
 	"Auto changelevel reason" {
@@ -52,19 +56,19 @@
 	}
 	
 	"HP boost disabled" {
-		"en"		"HP boost disabled"
+		"en"		"HP boost disabled."
 	}
 	
 	"HP boost enabled" {
-		"en"		"HP boost enabled"
+		"en"		"HP boost enabled."
 	}
 	
 	"Automatic ammo resupply disabled" {
-		"en"		"Automatic ammo resupply disabled"
+		"en"		"Automatic ammo resupply disabled."
 	}
 	
 	"Automatic ammo resupply enabled" {
-		"en"		"Automatic ammo resupply enabled"
+		"en"		"Automatic ammo resupply enabled."
 	}
 	
 	"No save" {
@@ -77,5 +81,17 @@
 	
 	"Position deleted" {
 		"en"		"Your saved position has been deleted."
+	}
+	
+	"Quick access" {
+		"en"		"Quick access:"
+	}
+	
+	"Save" {
+		"en"		"Save"
+	}
+	
+	"Load" {
+		"en"		"Load"
 	}
 }
