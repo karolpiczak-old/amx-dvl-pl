@@ -1,0 +1,81 @@
+"Phrases" {
+	"Reached final control point" {
+		"#format"	"{1:s}"
+		"en"		"Player \x03{1} \x01 has reached the final Control Point! Congratulations!"
+	}
+	
+	"Reached control point" {
+		"#format"	"{1:s},{2:d},{3:d}"
+		"en"		"Player \x03{1} \x01 has reached a Control Point ({2} of {3})! Keep going!"
+	}
+	
+	"Changing current map" {
+		"#format"	"{1:s},{2:d}"
+		"en"		"Current map will be changed to {1} in {2} seconds!"
+	}
+	
+	"Say !jumphelp" {
+		"en"		"Say !jumphelp to see the list of available commands"
+	}
+	
+	"Running Jump server toolbox" {
+		"#format"	"{1:s}"
+		"en"		"This server is running Jump server toolbox {1}"
+	}
+	
+	"Say !hp" {
+		"en"		"- say !hp to boost your health"
+	}
+	
+	"Say !ammo" {
+		"en"		"- say !ammo to toggle automatic ammo resupply"
+	}
+	
+	"Say !save" {
+		"en"		"- say !save or !s to save your current position"	
+	}
+	
+	"Say !load" {
+		"en"		"- say !load or !l to load your last saved position"		
+	}
+	
+	"Say !reset" {
+		"en"		"- say !reset to erase your save and start again"		
+	}
+	
+	"Client commands disabled" {
+		"en"		"- all client commands are currently disabled"		
+	}
+	
+	"Auto changelevel reason" {
+		"en"		"Last Control Point reached. Auto changelevel."
+	}
+	
+	"HP boost disabled" {
+		"en"		"HP boost disabled"
+	}
+	
+	"HP boost enabled" {
+		"en"		"HP boost enabled"
+	}
+	
+	"Automatic ammo resupply disabled" {
+		"en"		"Automatic ammo resupply disabled"
+	}
+	
+	"Automatic ammo resupply enabled" {
+		"en"		"Automatic ammo resupply enabled"
+	}
+	
+	"No save" {
+		"en"		"You don't have a saved location for this team/class on this map."
+	}
+	
+	"Position saved" {
+		"en"		"Your position has been saved."
+	}
+	
+	"Position deleted" {
+		"en"		"Your saved position has been deleted."
+	}
+}

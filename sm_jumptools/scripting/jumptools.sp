@@ -1,7 +1,7 @@
 /* *** SourceMod script **************************************************** *
  * Jump server toolbox                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Version: 1.2.0 (2012-02-18)                                               *
+ * Version: 1.2.1 (2012-02-18)                                               *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Short description:                                                        *
  *  A bunch of tools useful when running Jump servers:                       *
@@ -20,6 +20,8 @@
 /* ************************************************************************* *
  * Changelog:                                                                *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * + 2012-02-18 v.1.2.1                                                      *
+ *   - Added initial translation                                             *
  * + 2012-02-18 v.1.2.0                                                      *
  *   - Added save persistency (SQLite)                                       *
  *   - Changed autoload behaviour                                            *
@@ -89,7 +91,7 @@
 /**
  * Plugin version
  */
-new String:g_pluginVersion[] = "1.2.0";
+new String:g_pluginVersion[] = "1.2.1";
 
 /**
  * Is instant respawn enabled?
@@ -266,6 +268,8 @@ public Plugin:myinfo = {
  * Plugin initialisation (one-time)
  */
 public OnPluginStart() {
+	LoadTranslations("jumptools");
+	
 	g_jmp_version = CreateConVar("jmp_version", g_pluginVersion, "Jump server toolbox version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	
 	g_jmp_autorespawn = CreateConVar("jmp_autorespawn", "1", "Enable instant respawning", FCVAR_PLUGIN, true, 0.0, true, 1.0);
@@ -675,9 +679,9 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 				g_users_isCPTouched[CP][client] = true;
 				
 				if(g_users_CPsTouched[client] == g_CPnum)
-					PrintToChatAll("%s Player \x03%s \x01 has reached the final Control Point! Congratulations!", CHATPREFIX, playerName);
+					PrintToChatAll("%s %t", CHATPREFIX, "Reached final control point", playerName);
 				else
-					PrintToChatAll("%s Player \x03%s \x01 has reached a Control Point (%i of %i)! Keep going!", CHATPREFIX, playerName, g_users_CPsTouched[client], g_CPnum);
+					PrintToChatAll("%s %t", CHATPREFIX, "Reached control point", playerName, g_users_CPsTouched[client], g_CPnum);
 			}
 			
 			if(g_users_CPsTouched[client] == g_CPnum && g_changetime > 0.0 && !g_mapchangeInProgress) {
@@ -686,7 +690,7 @@ public EventCPTouched(Handle:event, const String:name[], bool:dontBroadcast) {
 				
 				new timeRounded = RoundToCeil(g_changetime);
 				
-				PrintToChatAll("%s Current map will be changed to %s in %i seconds!", CHATPREFIX, mapName, timeRounded);
+				PrintToChatAll("%s %t", CHATPREFIX, "Changing current map", mapName, timeRounded);
 				CreateTimer(g_changetime, ChangeMap);
 				
 				g_mapchangeInProgress = true;
@@ -813,7 +817,7 @@ public Action:CommandSay(client, args) {
  * Broadcasts short help message to all players
  */
 public Action:BroadcastPlugin(Handle:timer) {
-	PrintToChatAll("%s Say !jumphelp to see the list of available commands", CHATPREFIX);
+	PrintToChatAll("%s %t", "Say !jumphelp", CHATPREFIX);
 	
 	CreateTimer(g_broadcastFreq, BroadcastPlugin);
 }
@@ -825,24 +829,24 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 	new client = GetClientOfUserId(clientID);
 	
 	if (IsClientInGame(client)) {
-		PrintToChat(client, "%s This server is running Jump server toolbox %s", CHATPREFIX, g_pluginVersion);
+		PrintToChat(client, "%s %t", CHATPREFIX, "Running Jump server toolbox", g_pluginVersion);
 
 		if (g_HPboost) {
-			PrintToChat(client, "%s - say !hp to boost your health", CHATPREFIX);
+			PrintToChat(client, "%s %t", CHATPREFIX, "Say !hp");
 		}
 		
 		if (g_autoresupply) {
-			PrintToChat(client, "%s - say !ammo to toggle automatic ammo resupply", CHATPREFIX);
+			PrintToChat(client, "%s %t", CHATPREFIX, "Say !ammo");
 		}
 		
 		if (g_teleport) {
-			PrintToChat(client, "%s - say !save or !s to save your current position", CHATPREFIX);
-			PrintToChat(client, "%s - say !load or !l to load your last saved position", CHATPREFIX);
-			PrintToChat(client, "%s - say !reset to erase your save and start again", CHATPREFIX);
+			PrintToChat(client, "%s %t", CHATPREFIX, "Say !save");
+			PrintToChat(client, "%s %t", CHATPREFIX, "Say !load");
+			PrintToChat(client, "%s %t", CHATPREFIX, "Say !reset");
 		}
 		
 		if (!g_autoresupply && g_HPboost) {
-			PrintToChat(client, "%s - all client commands are currently disabled", CHATPREFIX);
+			PrintToChat(client, "%s %t", CHATPREFIX, "Client commands disabled");
 		}
 	}
 }
@@ -853,7 +857,7 @@ public Action:ShowHelp(Handle:timer, any:clientID) {
 public Action:ChangeMap(Handle:timer) {
 	new String:mapName[64];
 	GetNextMap(mapName, 64);
-	ForceChangeLevel(mapName, "Last Control Point reached. Auto changelevel.");
+	ForceChangeLevel(mapName, "%T", "Auto changelevel reason", LANG_SERVER);
 }
 
 /** 
@@ -894,12 +898,12 @@ toggleHPboost(client) {
 	if (g_users_HPboost[client]) {
 		g_users_HPboost[client] = false;
 		new clientID = GetClientUserId(client);
-		PrintToChat(client, "%s %s", CHATPREFIX, "HP boost disabled");
+		PrintToChat(client, "%s %t", CHATPREFIX, "HP boost disabled");
 		CreateTimer(0.1, HealClient, clientID);		
 	} else {
 		g_users_HPboost[client] = true;
 		new clientID = GetClientUserId(client);
-		PrintToChat(client, "%s %s", CHATPREFIX, "HP boost enabled");
+		PrintToChat(client, "%s %t", CHATPREFIX, "HP boost enabled");
 		CreateTimer(0.1, BoostClient, clientID);		
 	}
 }
@@ -910,11 +914,11 @@ toggleHPboost(client) {
 toggleAutoresupply(client) {
 	if (g_users_autoresupply[client]) {
 		g_users_autoresupply[client] = false;
-		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic ammo resupply disabled");
+		PrintToChat(client, "%s %t", CHATPREFIX, "Automatic ammo resupply disabled");
 	} else {
 		g_users_autoresupply[client] = true;
 		new clientID = GetClientUserId(client);
-		PrintToChat(client, "%s %s", CHATPREFIX, "Automatic ammo resupply enabled");
+		PrintToChat(client, "%s %t", CHATPREFIX, "Automatic ammo resupply enabled");
 		CreateTimer(0.1, ResupplyClient, clientID);		
 	}
 }
@@ -949,7 +953,7 @@ loadPosition(client) {
 				TeleportEntity(client, g_users_savedPos[client], g_users_savedAngle[client], NULL_VECTOR);
 			} else {
 				EmitSoundToClient(client, "buttons/button8.wav");
-				PrintToChat(client, "%s You don't have a saved location for this team/class on this map.", CHATPREFIX);
+				PrintToChat(client, "%s %t", CHATPREFIX, "No save");
 			}
 		}
 	}
@@ -971,7 +975,7 @@ savePosition(client) {
 				
 				writeSave(client);
 				
-				PrintToChat(client, "%s Your position has been saved.", CHATPREFIX);
+				PrintToChat(client, "%s %t", CHATPREFIX, "Position saved");
 			}
 		}
 	}
@@ -1071,7 +1075,7 @@ resetPosition(client) {
 	
 	eraseSave(client);
 	
-	PrintToChat(client, "%s Your saved position has been deleted.", CHATPREFIX);
+	PrintToChat(client, "%s %t", CHATPREFIX, "Position deleted");
 	
 	TF2_RespawnPlayer(client);
 }

@@ -1,0 +1,77 @@
+"Phrases" {
+	"Reached final control point" {
+		"pl"		"\x03{1} \x01 dotarł(a) do ostatniego punktu! Gratulacje!"
+	}
+	
+	"Reached control point" {
+		"pl"		"\x03{1} \x01 dotarł(a) do punktu ({2} z {3})! Tak dalej!"
+	}
+	
+	"Changing current map" {
+		"pl"		"Bieżąca mapa zostanie zmieniona na {1} w ciągu {2} sekund!"
+	}
+	
+	"Say !jumphelp" {
+		"pl"		"Powiedz !jumphelp, aby zobaczyć listę dostępnych komend"
+	}
+	
+	"Running Jump server toolbox" {
+		"pl"		"Ten serwer korzysta z pluginu Jump server toolbox {1}"
+	}
+	
+	"Say !hp" {
+		"pl"		"- powiedz !hp, aby zwiększyć liczbę punktów życia"
+	}
+	
+	"Say !ammo" {
+		"pl"		"- powiedz !ammo, aby włączyć automatyczne uzupełnianie amunicji"
+	}
+	
+	"Say !save" {
+		"pl"		"- powiedz !save lub !s, aby zapisać swoją pozycję"	
+	}
+	
+	"Say !load" {
+		"pl"		"- powiedz !load lub !l, aby wczytać swoją pozycję"		
+	}
+	
+	"Say !reset" {
+		"pl"		"- powiedz !reset, aby usunąć zapis pozycji i wrócić do punktu startowego"		
+	}
+	
+	"Client commands disabled" {
+		"pl"		"- wszystkie komendy klienta są w tej chwili wyłączone"		
+	}
+	
+	"Auto changelevel reason" {
+		"pl"		"Ostatni punkt został osiągnięty. Automatyczna zmiana mapy."
+	}
+	
+	"HP boost disabled" {
+		"pl"		"Zwiększenie punktów życia zostało wyłączone"
+	}
+	
+	"HP boost enabled" {
+		"pl"		"Zwiększenie punktów życia zostało włączone"
+	}
+	
+	"Automatic ammo resupply disabled" {
+		"pl"		"Automatyczne uzupełnianie amunicji zostało wyłączone"
+	}
+	
+	"Automatic ammo resupply enabled" {
+		"pl"		"Automatyczne uzupełnianie amunicji zostało włączone"
+	}
+	
+	"No save" {
+		"pl"		"Nie posiadasz zapisu pozycji dla tej drużyny/klasy na tej mapie."
+	}
+	
+	"Position saved" {
+		"pl"		"Twoja pozycja została zapisana."
+	}
+	
+	"Position deleted" {
+		"pl"		"Twój zapis pozycji został usunięty."
+	}
+}
